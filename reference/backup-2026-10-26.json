@@ -1,0 +1,119 @@
+{
+  "format": "gestione-spese-backup",
+  "version": 1,
+  "exportedAt": "2026-10-26T12:15:00+01:00",
+  "currency": "EUR",
+  "amountsIn": "cents",
+  "settings": {
+    "payday": 10
+  },
+  "categories": [
+    {
+      "id": "mvp2vizgjpt741",
+      "kind": "spesa",
+      "name": "Svago",
+      "order": 0,
+      "quota": 15000,
+      "target": null,
+      "fill": "auto",
+      "deadline": null
+    },
+    {
+      "id": "mvp2vb1fcowd20",
+      "kind": "spesa",
+      "name": "Benzina",
+      "order": 1,
+      "quota": 6000,
+      "target": null,
+      "fill": "auto",
+      "deadline": null
+    },
+    {
+      "id": "mvp2vryaafg67s",
+      "kind": "spesa",
+      "name": "Colazione",
+      "order": 2,
+      "quota": 5000,
+      "target": null,
+      "fill": "auto",
+      "deadline": null
+    },
+    {
+      "deadline": "2026-12-11",
+      "fill": "manuale",
+      "id": "mvp2w7sof753at",
+      "kind": "obiettivo",
+      "name": "Tasse uni Dicembre",
+      "order": 3,
+      "quota": 80000,
+      "target": 80000
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "mvp2wx497a5evf",
+      "name": "Caffe + brioches",
+      "amount": 290,
+      "categoryId": "mvp2vryaafg67s",
+      "order": 0
+    },
+    {
+      "id": "mvp2xjud64l3o2",
+      "name": "Caffe + tramezzino",
+      "amount": 350,
+      "categoryId": "mvp2vryaafg67s",
+      "order": 1
+    },
+    {
+      "id": "mvp2xxiv1g4589",
+      "name": "Caffe",
+      "amount": 130,
+      "categoryId": "mvp2vryaafg67s",
+      "order": 2
+    },
+    {
+      "id": "mvp41kpuchdkez",
+      "name": "Benzina 30",
+      "amount": 3000,
+      "categoryId": "mvp2vb1fcowd20",
+      "order": 3
+    },
+    {
+      "id": "mvp42ehpu4yyk2",
+      "name": "Benzina 20",
+      "amount": 2000,
+      "categoryId": "mvp2vb1fcowd20",
+      "order": 4
+    }
+  ],
+  "movements": [
+    {
+      "amount": 165030,
+      "date": "2026-10-26",
+      "id": "mvp419xnn6rt3t",
+      "kind": "rettifica",
+      "total": 165030,
+      "ts": 1793010294923
+    },
+    {
+      "amount": -165030,
+      "date": "2026-10-26",
+      "id": "mvp45cu8h02ygc",
+      "kind": "rettifica",
+      "total": 0,
+      "ts": 1793010485313
+    },
+    {
+      "alloc": {
+        "mvp2vb1fcowd20": 6000,
+        "mvp2vizgjpt741": 15000,
+        "mvp2vryaafg67s": 5000
+      },
+      "amount": 165030,
+      "date": "2026-10-27",
+      "id": "mvp45o9rbtjsxy",
+      "kind": "stipendio",
+      "ts": 1793010500127
+    }
+  ]
+}
