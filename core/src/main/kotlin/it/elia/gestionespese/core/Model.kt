@@ -1,6 +1,7 @@
 package it.elia.gestionespese.core
 
 import java.time.LocalDate
+import java.time.YearMonth
 
 // Modello di dominio (SPEC.md §3). Importi sempre in centesimi.
 
@@ -54,7 +55,15 @@ data class Movement(
     val createdAt: Long = 0,
     /** categoryId → centesimi con segno (STIPENDIO, ENTRATA, ASSEGNA, PRELEVA). */
     val allocations: Map<String, Long> = emptyMap(),
-)
+    /**
+     * Solo STIPENDIO: mese a cui si riferisce, se diverso da quello della data
+     * (es. pagato il 31 ottobre per novembre). Null = mese della data.
+     */
+    val refMonth: YearMonth? = null,
+) {
+    /** Mese contabile: quello di riferimento se c'è, altrimenti quello della data. */
+    val month: YearMonth get() = refMonth ?: YearMonth.from(date)
+}
 
 data class Settings(
     /** Giorno del mese in cui arriva lo stipendio (1–31). */

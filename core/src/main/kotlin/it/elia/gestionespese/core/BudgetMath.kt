@@ -2,6 +2,7 @@ package it.elia.gestionespese.core
 
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -102,12 +103,12 @@ class BudgetMath(
 
     // ---------- 4.1 Saldi ----------
 
-    /** Saldi considerando i movimenti fino al mese [upTo] incluso (tutti se null). */
+    /** Saldi considerando i movimenti fino al mese contabile [upTo] incluso (tutti se null). */
     fun balances(upTo: YearMonth? = null): Balances {
         val byCategory = LinkedHashMap<String, Long>()
         var toAssign = 0L
         for (m in movements) {
-            if (upTo != null && YearMonth.from(m.date) > upTo) continue
+            if (upTo != null && m.month > upTo) continue
             if (m.kind in INCOMING) toAssign += m.amount
             for ((cat, v) in m.allocations) {
                 byCategory[cat] = (byCategory[cat] ?: 0L) + v
@@ -122,25 +123,41 @@ class BudgetMath(
 
     // ---------- 4.2 Prossimi stipendi ----------
 
-    /** Vero se nel mese corrente è già registrato uno STIPENDIO. */
-    val salaryReceivedThisMonth: Boolean =
-        this.movements.any { it.kind == MovementKind.STIPENDIO && YearMonth.from(it.date) == currentMonth }
+    private val salaries: List<Movement> = this.movements.filter { it.kind == MovementKind.STIPENDIO }
+
+    /**
+     * Mesi di anticipo con cui arriva lo stipendio rispetto al mese a cui si riferisce, ricavati dall'ultimo
+     * stipendio registrato: 0 se arriva nel suo mese, 1 se arriva il mese prima (es. il 31 ottobre per novembre).
+     */
+    val salaryOffset: Int = salaries.lastOrNull()
+        ?.let { ChronoUnit.MONTHS.between(YearMonth.from(it.date), it.month).toInt().coerceIn(-1, 1) }
+        ?: 0
+
+    /** Mese di riferimento dello stipendio che arriva nel mese di calendario corrente. */
+    private val currentSalaryMonth: YearMonth = currentMonth.plusMonths(salaryOffset.toLong())
+
+    /** Vero se lo stipendio che spetta al mese corrente (tenendo conto dell'anticipo) è già registrato. */
+    val salaryReceivedThisMonth: Boolean = salaries.any { it.month == currentSalaryMonth }
 
     /**
      * Date dei prossimi stipendi, uno al mese nel giorno di arrivo (nei mesi corti l'ultimo giorno).
      * Il primo è quello del mese corrente se non è ancora registrato, altrimenti quello del mese dopo.
+     * Se lo stipendio arriva in anticipo (vedi [salaryOffset]) i mesi sono quelli di riferimento.
      */
     fun nextPaydays(limit: Int, until: LocalDate? = null): List<LocalDate> {
-        var month = if (salaryReceivedThisMonth) currentMonth.plusMonths(1) else currentMonth
+        var month = if (salaryReceivedThisMonth) currentSalaryMonth.plusMonths(1) else currentSalaryMonth
         val out = ArrayList<LocalDate>()
         while (out.size < limit) {
-            val date = paydayOf(month)
+            val date = salaryDateFor(month)
             if (until != null && date > until) break
             out += date
             month = month.plusMonths(1)
         }
         return out
     }
+
+    /** Data di arrivo dello stipendio che si riferisce al mese [refMonth]. */
+    fun salaryDateFor(refMonth: YearMonth): LocalDate = paydayOf(refMonth.minusMonths(salaryOffset.toLong()))
 
     /** Giorno di stipendio nel mese indicato. */
     fun paydayOf(month: YearMonth): LocalDate = month.atDay(min(payday, month.lengthOfMonth()))
@@ -186,8 +203,14 @@ class BudgetMath(
         return SalarySplit(proposals, amount - proposals.values.sum())
     }
 
-    /** Data proposta per lo stipendio: il giorno di stipendio del mese corrente. */
-    fun proposedSalaryDate(): LocalDate = paydayOf(currentMonth)
+    /**
+     * Mese di riferimento proposto per il prossimo stipendio: quello dopo l'ultimo registrato,
+     * oppure il mese corrente se non ce ne sono.
+     */
+    fun proposedSalaryMonth(): YearMonth = salaries.maxOfOrNull { it.month }?.plusMonths(1) ?: currentMonth
+
+    /** Data proposta per lo stipendio: il giorno di arrivo dello stipendio del mese proposto. */
+    fun proposedSalaryDate(): LocalDate = salaryDateFor(proposedSalaryMonth())
 
     // ---------- 4.6 Livello del vasetto ----------
 
@@ -196,7 +219,7 @@ class BudgetMath(
     private val allocatedThisMonth: Map<String, Long> by lazy {
         val out = HashMap<String, Long>()
         for (m in movements) {
-            if (YearMonth.from(m.date) != currentMonth) continue
+            if (m.month != currentMonth) continue
             for ((cat, v) in m.allocations) if (v > 0) out[cat] = (out[cat] ?: 0L) + v
         }
         out
@@ -236,7 +259,7 @@ class BudgetMath(
         val entered = HashMap<String, Long>()
         val spent = HashMap<String, Long>()
         for (m in movements) {
-            if (YearMonth.from(m.date) != month) continue
+            if (m.month != month) continue
             when (m.kind) {
                 MovementKind.STIPENDIO, MovementKind.ENTRATA -> income += m.amount
                 MovementKind.SPESA -> {
@@ -256,7 +279,7 @@ class BudgetMath(
     }
 
     /** Mesi che contengono almeno un movimento, in ordine crescente. */
-    fun monthsWithData(): List<YearMonth> = movements.map { YearMonth.from(it.date) }.distinct().sorted()
+    fun monthsWithData(): List<YearMonth> = movements.map { it.month }.distinct().sorted()
 
     /** Mesi del grafico: ultimi 12 fino al mese corrente, a partire dal primo mese con dati. */
     fun chartMonths(): List<YearMonth> {

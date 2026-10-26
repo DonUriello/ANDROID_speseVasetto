@@ -30,7 +30,8 @@ object MovementText {
         val name = { id: String? -> id?.let(nameOf) ?: DELETED }
         val isIn = m.kind == MovementKind.STIPENDIO || m.kind == MovementKind.ENTRATA
         val note = m.note?.trim().orEmpty()
-        var title = kindLabel(m.kind)
+        // Lo stipendio mostra sempre il mese a cui si riferisce (può essere diverso da quello della data)
+        var title = if (m.kind == MovementKind.STIPENDIO) "Stipendio di ${Formats.monthLong(m.month)}" else kindLabel(m.kind)
         var sub = ""
         when {
             m.kind == MovementKind.SPESA -> {

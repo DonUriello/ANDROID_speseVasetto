@@ -134,7 +134,9 @@ class BudgetMathTest {
 
     @Test
     fun `data proposta per lo stipendio`() {
-        assertEquals(d("2026-10-10"), withSalary.proposedSalaryDate())
+        // ottobre è già registrato: si propone il prossimo
+        assertEquals(d("2026-11-10"), withSalary.proposedSalaryDate())
+        assertEquals(d("2026-10-10"), withoutSalary.proposedSalaryDate())
     }
 
     // ---------- 4.1 ----------

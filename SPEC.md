@@ -57,6 +57,9 @@ Usare le versioni stabili correnti di AGP, Kotlin, Compose BOM e Room al momento
 | note | String? | |
 | total | Long? | solo `RETTIFICA`: totale conto impostato |
 | createdAt | Long | epoch millis, per ordinare movimenti dello stesso giorno |
+| refMonth | YearMonth? | solo `STIPENDIO`: mese di riferimento, se diverso da quello di `date` (es. pagato il 31 ottobre per novembre) |
+
+**Mese contabile** di un movimento: `refMonth` se presente, altrimenti il mese di `date`. Saldi "fino a un mese", livello dei vasetti, riepilogo mensile e raggruppamento dei Movimenti usano il mese contabile.
 
 ### MovementAllocation
 `movementId`, `categoryId`, `amount` (Long **con segno**). Una riga per ogni budget toccato da `STIPENDIO`, `ENTRATA`, `ASSEGNA`, `PRELEVA`.
@@ -95,11 +98,14 @@ Un saldo può essere negativo ("In rosso").
 
 ### 4.2 Prossimi stipendi
 ```
+anticipo = mesi tra il mese della data e il mese di riferimento dell'ultimo STIPENDIO (0 se nessuno; limitato a -1..1)
+meseStipendioCorrente = mese di oggi + anticipo
+dataStipendio(R) = (anno, mese, min(payday, ultimo giorno del mese)) del mese R - anticipo
+
 nextPaydays(limit, until?):
-  meseCorrente = mese di oggi
-  se esiste già un movimento STIPENDIO nel mese corrente → si parte dal mese successivo
-  altrimenti → si parte dal mese corrente
-  per ogni mese: data = (anno, mese, min(payday, ultimo giorno del mese))
+  se esiste già uno STIPENDIO con mese contabile = meseStipendioCorrente → si parte dal mese successivo
+  altrimenti → si parte da meseStipendioCorrente
+  per ogni mese R: data = dataStipendio(R)
   ci si ferma a `limit` date o quando data > until
 
 salariesUntil(deadline) = numero di nextPaydays(∞, until = deadline)
@@ -126,7 +132,8 @@ rimasto = importo
 per ogni budget in ordine: proposta = min(quotaEffettiva, max(0, rimasto)); rimasto -= proposta
 "Da assegnare" = importo - somma proposte
 ```
-Le proposte sono modificabili a mano prima di confermare. Validazioni: importo > 0, nessuna quota negativa, somma quote ≤ importo. Data proposta: il giorno `payday` del mese corrente.
+Le proposte sono modificabili a mano prima di confermare. Validazioni: importo > 0, nessuna quota negativa, somma quote ≤ importo.
+Mese di riferimento proposto: quello dopo l'ultimo stipendio registrato (il mese corrente se non ce ne sono); data proposta: `dataStipendio(mese proposto)`. Entrambi modificabili.
 
 ### 4.6 Livello del vasetto (0–100%)
 - **OBIETTIVO con target**: `saldo / target`.
@@ -177,7 +184,7 @@ L'utente scrive il totale reale. `diff = nuovoTotale - totaleConto`. Se `diff �
 - Stato vuoto: invito a creare il primo budget, con opzione "Parti da un esempio modificabile".
 
 ### Moduli
-- **Stipendio**: importo, data, elenco budget con quote proposte modificabili e sottotitolo (quota / "obiettivo · X calcolati" / "obiettivo manuale · quota X"), riga finale "Resta in Da assegnare".
+- **Stipendio**: importo, data, mese di riferimento, elenco budget con quote proposte modificabili e sottotitolo (quota / "obiettivo · X calcolati" / "obiettivo manuale · quota X"), riga finale "Resta in Da assegnare".
 - **Entrata extra** (+): importo, data, descrizione, quote opzionali a zero.
 - **Spesa** (−): importo, data, budget (con saldo accanto), descrizione; avviso se il budget andrà in rosso.
 - **Assegna**: importi per budget, "Resta da assegnare", validazione ≤ disponibile.
@@ -224,9 +231,9 @@ Tema chiaro e scuro, entrambi curati.
     "settings": { "payday": 10 },
     "categories": [ { "id", "name", "kind": "spesa|obiettivo", "fill": "auto|manuale", "quota", "target", "deadline", "order" } ],
     "shortcuts":  [ { "id", "name", "amount", "categoryId", "order" } ],
-    "movements":  [ { "id", "kind": "stipendio|entrata|spesa|assegna|rettifica|preleva", "date", "amount", "alloc": { "<categoryId>": cents }, "categoryId", "note", "total", "ts" } ] }
+    "movements":  [ { "id", "kind": "stipendio|entrata|spesa|assegna|rettifica|preleva", "date", "amount", "alloc": { "<categoryId>": cents }, "categoryId", "note", "total", "ts", "refMonth": "yyyy-MM" } ] }
   ```
-  `kind` è minuscolo nel file; `alloc` è una mappa da categoryId a centesimi con segno; `ts` corrisponde a `createdAt`.
+  `kind` è minuscolo nel file; `alloc` è una mappa da categoryId a centesimi con segno; `ts` corrisponde a `createdAt`; `refMonth` è facoltativo (solo stipendi, assente nei file del prototipo).
 - **Esporta**: scrive il file JSON dove sceglie l'utente (SAF), nome `backup-gestione-spese-yyyy-MM-dd.json`.
 - **Importa**: legge il file, mostra un riepilogo (n. budget, spese rapide, movimenti) e chiede conferma; **sostituisce** tutti i dati in una transazione.
 - **Primo avvio** senza dati: proporre "Importa backup" oltre a "Crea il primo budget".
