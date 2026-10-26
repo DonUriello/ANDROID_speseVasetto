@@ -10,7 +10,6 @@ import it.elia.gestionespese.core.Shortcut
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
-import java.time.YearMonth
 
 /** Contenuto completo di un backup, nel modello di dominio. */
 data class BackupData(
@@ -126,8 +125,6 @@ private data class BackupMovement(
     val note: String? = null,
     val total: Long? = null,
     val ts: Long? = null,
-    /** Solo stipendi: mese di riferimento "yyyy-MM", se diverso da quello della data. */
-    val refMonth: String? = null,
 )
 
 // ---------- conversioni ----------
@@ -172,7 +169,6 @@ private fun BackupMovement.toDomain() = Movement(
     total = total,
     createdAt = ts ?: 0,
     allocations = alloc ?: emptyMap(),
-    refMonth = refMonth?.let { YearMonth.parse(it) }?.takeIf { it != YearMonth.from(LocalDate.parse(date)) },
 )
 
 private fun Movement.toFile() = BackupMovement(
@@ -185,5 +181,4 @@ private fun Movement.toFile() = BackupMovement(
     note = note,
     total = total,
     ts = createdAt,
-    refMonth = refMonth?.toString(),
 )

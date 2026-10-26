@@ -18,7 +18,8 @@ object MovementText {
 
     fun kindLabel(kind: MovementKind): String = when (kind) {
         MovementKind.STIPENDIO -> "Stipendio"
-        MovementKind.ENTRATA -> "Entrata extra"
+        MovementKind.STIPENDIO_EXTRA -> "Stipendio extra"
+        MovementKind.ENTRATA -> "Altra entrata"
         MovementKind.SPESA -> "Spesa"
         MovementKind.ASSEGNA -> "Assegnazione"
         MovementKind.RETTIFICA -> "Rettifica totale conto"
@@ -28,10 +29,9 @@ object MovementText {
     /** [nameOf] restituisce il nome del budget, o null se è stato eliminato. */
     fun describe(m: Movement, nameOf: (String) -> String?): MovementLine {
         val name = { id: String? -> id?.let(nameOf) ?: DELETED }
-        val isIn = m.kind == MovementKind.STIPENDIO || m.kind == MovementKind.ENTRATA
+        val isIn = m.kind in INCOME
         val note = m.note?.trim().orEmpty()
-        // Lo stipendio mostra sempre il mese a cui si riferisce (può essere diverso da quello della data)
-        var title = if (m.kind == MovementKind.STIPENDIO) "Stipendio di ${Formats.monthLong(m.month)}" else kindLabel(m.kind)
+        var title = kindLabel(m.kind)
         var sub = ""
         when {
             m.kind == MovementKind.SPESA -> {
@@ -70,6 +70,9 @@ object MovementText {
         }
         return MovementLine(title, sub, amount, sign, isIn || (m.kind == MovementKind.RETTIFICA && m.amount > 0))
     }
+
+    /** Entrate vere e proprie (non le rettifiche). */
+    val INCOME = setOf(MovementKind.STIPENDIO, MovementKind.STIPENDIO_EXTRA, MovementKind.ENTRATA)
 
     /** Vero se il movimento riguarda il budget (spesa o quota). */
     fun touches(m: Movement, categoryId: String): Boolean =

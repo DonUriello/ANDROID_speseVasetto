@@ -16,11 +16,11 @@ class TextsTest {
     fun `righe dei movimenti`() {
         val salary = Movement("1", MovementKind.STIPENDIO, d("2026-10-10"), 10000, allocations = mapOf("a" to 3000, "b" to 2000))
         assertEquals(
-            MovementLine("Stipendio di ottobre 2026", "Svago ${eur(3000)} · Benzina ${eur(2000)} · Da assegnare ${eur(5000)}", 10000, "+", true),
+            MovementLine("Stipendio", "Svago ${eur(3000)} · Benzina ${eur(2000)} · Da assegnare ${eur(5000)}", 10000, "+", true),
             MovementText.describe(salary, nameOf),
         )
         val extra = Movement("2", MovementKind.ENTRATA, d("2026-10-10"), 500, note = "regalo")
-        assertEquals(MovementLine("Entrata extra · regalo", "Da assegnare ${eur(500)}", 500, "+", true), MovementText.describe(extra, nameOf))
+        assertEquals(MovementLine("Altra entrata · regalo", "Da assegnare ${eur(500)}", 500, "+", true), MovementText.describe(extra, nameOf))
 
         val spesa = Movement("3", MovementKind.SPESA, d("2026-10-11"), 290, categoryId = "zzz", note = "")
         assertEquals(MovementLine("Spesa", "Budget eliminato", 290, "−", false), MovementText.describe(spesa, nameOf))

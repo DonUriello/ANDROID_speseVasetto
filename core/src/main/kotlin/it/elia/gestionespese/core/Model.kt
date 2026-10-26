@@ -1,7 +1,6 @@
 package it.elia.gestionespese.core
 
 import java.time.LocalDate
-import java.time.YearMonth
 
 // Modello di dominio (SPEC.md §3). Importi sempre in centesimi.
 
@@ -10,7 +9,11 @@ enum class CategoryKind { SPESA, OBIETTIVO }
 /** Modo di riempimento: significativo solo per gli obiettivi. */
 enum class FillMode { AUTO, MANUALE }
 
-enum class MovementKind { STIPENDIO, ENTRATA, SPESA, ASSEGNA, RETTIFICA, PRELEVA }
+/**
+ * STIPENDIO riempie i vasetti; STIPENDIO_EXTRA (tredicesima, quattordicesima…) ed ENTRATA ("altro")
+ * vanno in "Da assegnare" senza riempire i vasetti.
+ */
+enum class MovementKind { STIPENDIO, STIPENDIO_EXTRA, ENTRATA, SPESA, ASSEGNA, RETTIFICA, PRELEVA }
 
 /** Un budget ("vasetto"). */
 data class Category(
@@ -55,15 +58,7 @@ data class Movement(
     val createdAt: Long = 0,
     /** categoryId → centesimi con segno (STIPENDIO, ENTRATA, ASSEGNA, PRELEVA). */
     val allocations: Map<String, Long> = emptyMap(),
-    /**
-     * Solo STIPENDIO: mese a cui si riferisce, se diverso da quello della data
-     * (es. pagato il 31 ottobre per novembre). Null = mese della data.
-     */
-    val refMonth: YearMonth? = null,
-) {
-    /** Mese contabile: quello di riferimento se c'è, altrimenti quello della data. */
-    val month: YearMonth get() = refMonth ?: YearMonth.from(date)
-}
+)
 
 data class Settings(
     /** Giorno del mese in cui arriva lo stipendio (1–31). */

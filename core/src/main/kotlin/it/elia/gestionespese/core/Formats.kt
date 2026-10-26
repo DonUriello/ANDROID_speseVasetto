@@ -29,6 +29,18 @@ object Formats {
     /** 2026-11-10 → "10 nov". */
     fun dayMonth(d: LocalDate): String = "${d.dayOfMonth.toString().padStart(2, '0')} ${MONTHS_SHORT[d.monthValue - 1]}"
 
+    /**
+     * Intervallo di date: "10 ott – 9 nov 2026", "10 dic 2026 – 9 gen 2027";
+     * un mese intero diventa "ottobre 2026".
+     */
+    fun range(start: LocalDate, end: LocalDate): String {
+        val ym = YearMonth.from(start)
+        if (start.dayOfMonth == 1 && end == ym.atEndOfMonth()) return monthLong(ym)
+        val s = "${start.dayOfMonth} ${MONTHS_SHORT[start.monthValue - 1]}"
+        val e = "${end.dayOfMonth} ${MONTHS_SHORT[end.monthValue - 1]} ${end.year}"
+        return if (start.year == end.year) "$s – $e" else "$s ${start.year} – $e"
+    }
+
     /** 2026-10 → "ottobre 2026". */
     fun monthLong(m: YearMonth): String = "${MONTHS_LONG[m.monthValue - 1]} ${m.year}"
 

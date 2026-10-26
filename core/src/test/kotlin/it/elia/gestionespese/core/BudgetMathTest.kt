@@ -44,7 +44,7 @@ class BudgetMathTest {
 
     @Test
     fun `nei mesi corti lo stipendio cade l'ultimo giorno`() {
-        val math = BudgetMath(emptyList(), payday = 31, today = d("2027-01-15"))
+        val math = BudgetMath(emptyList(), payday = 31, today = d("2027-01-31"))
         assertEquals(listOf(d("2027-01-31"), d("2027-02-28"), d("2027-03-31"), d("2027-04-30")), math.nextPaydays(4))
     }
 
@@ -162,7 +162,7 @@ class BudgetMathTest {
     fun `saldi fino a un mese`() {
         val movs = listOf(
             Movement("1", MovementKind.ENTRATA, d("2026-09-10"), 5000, allocations = mapOf("a" to 5000)),
-            Movement("2", MovementKind.SPESA, d("2026-10-02"), 1000, categoryId = "a"),
+            Movement("2", MovementKind.SPESA, d("2026-10-12"), 1000, categoryId = "a"),
         )
         val math = BudgetMath(movs, 10, today)
         assertEquals(5000, math.balances(YearMonth.of(2026, 9)).of("a"))
@@ -223,7 +223,7 @@ class BudgetMathTest {
 
     @Test
     fun `mesi del grafico`() {
-        val movs = listOf(Movement("1", MovementKind.ENTRATA, d("2026-08-03"), 100))
+        val movs = listOf(Movement("1", MovementKind.ENTRATA, d("2026-08-13"), 100))
         assertEquals(
             listOf(YearMonth.of(2026, 8), YearMonth.of(2026, 9), YearMonth.of(2026, 10)),
             BudgetMath(movs, 10, today).chartMonths(),
