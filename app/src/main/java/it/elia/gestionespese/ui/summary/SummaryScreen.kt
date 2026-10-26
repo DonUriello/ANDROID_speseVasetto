@@ -78,22 +78,22 @@ fun SummaryScreen(st: UiState, header: @Composable () -> Unit, contentPadding: P
             }
             return@LazyColumn
         }
-        val current = YearMonth.from(st.today)
+        val current = st.math.currentPeriod
         val selected = selectedText?.let { YearMonth.parse(it) }?.takeIf { it in months }
             ?: if (current in months) current else months.last()
         val series = st.math.chartMonths().map { st.math.monthSummary(it) }
-        if (series.isNotEmpty()) item { ChartPanel(series) }
+        if (series.isNotEmpty()) item { ChartPanel(st, series) }
         item { MonthPanel(st, months, selected) { selectedText = it.toString() } }
     }
 }
 
 @Composable
-private fun ChartPanel(series: List<MonthSummary>) {
+private fun ChartPanel(st: UiState, series: List<MonthSummary>) {
     val colors = AppTheme.colors
     var picked by remember(series.size) { mutableStateOf<Int?>(null) }
     var showTable by rememberSaveable { mutableStateOf(false) }
     Panel {
-        SectionTitle("Entrate e uscite per mese")
+        SectionTitle("Entrate e uscite per periodo")
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             LegendItem("Entrate", colors.chartIn)
             LegendItem("Spese", colors.chartOut)
@@ -102,20 +102,20 @@ private fun ChartPanel(series: List<MonthSummary>) {
         val p = picked?.let(series::getOrNull)
         if (p != null) {
             Text(
-                "${Formats.monthLong(p.month)}: entrate ${Formats.eur(p.income)} · spese ${Formats.eur(p.expenses)}",
+                "${st.math.periodLabel(p.month)}: entrate ${Formats.eur(p.income)} · spese ${Formats.eur(p.expenses)}",
                 style = MaterialTheme.typography.bodySmall.tabular(),
             )
         } else {
-            Text("Tocca un mese per vedere i valori.", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            Text("Tocca una barra per vedere i valori.", style = MaterialTheme.typography.bodySmall, color = colors.muted)
         }
         TextButton(onClick = { showTable = !showTable }) {
             Text(if (showTable) "Nascondi la tabella" else "Mostra i valori in tabella", color = colors.muted)
         }
         if (showTable) {
             Table(
-                header = listOf("Mese", "Entrate", "Spese", "Differenza"),
+                header = listOf("Periodo", "Entrate", "Spese", "Differenza"),
                 rows = series.map { s ->
-                    listOf(Cell.Text(Formats.monthLong(s.month)), Cell.Money(s.income), Cell.Money(s.expenses), Cell.Money(s.difference))
+                    listOf(Cell.Text(st.math.periodLabel(s.month)), Cell.Money(s.income), Cell.Money(s.expenses), Cell.Money(s.difference))
                 },
             )
         }
@@ -205,8 +205,8 @@ private fun BarChart(series: List<MonthSummary>, picked: Int?, onPick: (Int) -> 
 private fun MonthPanel(st: UiState, months: List<YearMonth>, selected: YearMonth, onSelect: (YearMonth) -> Unit) {
     val s = st.math.monthSummary(selected)
     Panel {
-        SectionTitle("Dettaglio del mese")
-        SelectField("Mese", months.reversed(), selected, Formats::monthLong, onSelect)
+        SectionTitle("Dettaglio del periodo")
+        SelectField("Periodo", months.reversed(), selected, { st.math.periodLabel(it) }, onSelect)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Stat("Entrate", s.income, Modifier.weight(1f))
             Stat("Spese", s.expenses, Modifier.weight(1f))
@@ -218,7 +218,7 @@ private fun MonthPanel(st: UiState, months: List<YearMonth>, selected: YearMonth
         }
         val tot = st.categories.mapNotNull { s.perCategory[it.id] }
         Table(
-            header = listOf("Budget", "Entrato", "Speso", "Saldo a fine mese"),
+            header = listOf("Budget", "Entrato", "Speso", "Saldo a fine periodo"),
             rows = rows,
             footer = listOf(
                 Cell.Text("Totale"),

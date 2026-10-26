@@ -24,10 +24,9 @@ fun MovementWithAllocations.toDomain() = Movement(
     total = movement.total,
     createdAt = movement.createdAt,
     allocations = allocations.associate { it.categoryId to it.amount },
-    refMonth = movement.refMonth,
 )
 
-fun Movement.toEntity() = MovementEntity(id, kind, date, amount, categoryId, note, total, createdAt, refMonth)
+fun Movement.toEntity() = MovementEntity(id, kind, date, amount, categoryId, note, total, createdAt)
 
 fun Movement.allocationEntities() = allocations
     .filterValues { it != 0L }

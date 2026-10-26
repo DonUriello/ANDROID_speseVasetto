@@ -61,9 +61,9 @@ fun MovementsScreen(
     val catId = filter.categoryId?.takeIf { st.category(it) != null }
     val month = filter.month?.takeIf { it in months }
     val shown = st.data.movements
-        .filter { (month == null || it.month == month) && (catId == null || MovementText.touches(it, catId)) }
+        .filter { (month == null || st.math.periodOf(it) == month) && (catId == null || MovementText.touches(it, catId)) }
         .sortedWith(compareByDescending<Movement> { it.date }.thenByDescending { it.createdAt })
-    val byMonth = shown.groupBy { it.month }
+    val byMonth = shown.groupBy { st.math.periodOf(it) }
 
     LazyColumn(
         contentPadding = contentPadding,
@@ -93,10 +93,10 @@ fun MovementsScreen(
                         modifier = Modifier.weight(1f),
                     )
                     SelectField(
-                        label = "Mese",
+                        label = "Periodo",
                         options = listOf<YearMonth?>(null) + months,
                         selected = month,
-                        optionText = { m -> if (m == null) "Tutti i mesi" else Formats.monthLong(m) },
+                        optionText = { m -> if (m == null) "Tutti i periodi" else st.math.periodLabel(m) },
                         onSelect = { onFilter(filter.copy(month = it)) },
                         modifier = Modifier.weight(1f),
                     )
@@ -111,7 +111,7 @@ fun MovementsScreen(
             }
         }
         for ((m, list) in byMonth) {
-            item(key = "h-$m") { SmallLabel(Formats.monthLong(m), Modifier.padding(top = 10.dp)) }
+            item(key = "h-$m") { SmallLabel(st.math.periodLabel(m), Modifier.padding(top = 10.dp)) }
             items(list, key = { it.id }) { mv ->
                 MovementRow(st, mv, onDelete)
                 RowDivider()

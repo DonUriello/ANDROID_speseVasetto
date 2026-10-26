@@ -48,7 +48,10 @@ data class MovementEntity(
     val note: String?,
     val total: Long?,
     @ColumnInfo(name = "created_at") val createdAt: Long,
-    /** Solo stipendi: mese di riferimento "yyyy-MM" se diverso da quello della data (dalla versione 2). */
+    /**
+     * Non più usata: dalla versione 2 conteneva il mese di riferimento dello stipendio, sostituito dai periodi
+     * contabili. Resta per non dover ricreare la tabella (rischioso per i dati); si scrive sempre null.
+     */
     @ColumnInfo(name = "ref_month") val refMonth: YearMonth? = null,
 )
 

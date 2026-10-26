@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import it.elia.gestionespese.core.BudgetMath
 import it.elia.gestionespese.core.Category
 import it.elia.gestionespese.core.Checked
 import it.elia.gestionespese.core.Formats
@@ -63,7 +64,6 @@ import it.elia.gestionespese.ui.components.SummaryRow
 import it.elia.gestionespese.ui.components.TextInput
 import it.elia.gestionespese.ui.theme.AppTheme
 import it.elia.gestionespese.ui.theme.tabular
-import java.time.YearMonth
 
 /** Precompilazione del modulo Spesa (es. da una spesa rapida con ✎). */
 data class ExpensePrefill(val title: String, val amount: Long, val categoryId: String, val note: String)
@@ -102,8 +102,8 @@ fun SheetHost(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             when (sheet) {
-                Sheet.Salary -> IncomeForm(st, vm, salary = true, close)
-                Sheet.Income -> IncomeForm(st, vm, salary = false, close)
+                Sheet.Salary -> IncomeForm(st, vm, MovementKind.STIPENDIO, close)
+                Sheet.Income -> IncomeForm(st, vm, MovementKind.ENTRATA, close)
                 is Sheet.Expense -> ExpenseForm(st, vm, sheet.prefill, close)
                 Sheet.Assign -> AssignForm(st, vm, close)
                 is Sheet.Take -> st.category(sheet.categoryId)?.let { TakeForm(st, vm, it, close) }
@@ -115,72 +115,97 @@ fun SheetHost(
     }
 }
 
-// ---------- stipendio ed entrata extra ----------
+// ---------- entrate: stipendio, stipendio extra, altro ----------
 
+private fun incomeLabel(kind: MovementKind) = when (kind) {
+    MovementKind.STIPENDIO -> "Stipendio"
+    MovementKind.STIPENDIO_EXTRA -> "Stipendio extra"
+    else -> "Altro"
+}
+
+/**
+ * Registra un'entrata. Solo lo STIPENDIO riempie i vasetti con le quote proposte;
+ * stipendio extra (tredicesima…) e altro vanno tutti in "Da assegnare".
+ */
 @Composable
-private fun IncomeForm(st: UiState, vm: MainViewModel, salary: Boolean, close: () -> Unit) {
+private fun IncomeForm(st: UiState, vm: MainViewModel, initialKind: MovementKind, close: () -> Unit) {
     val cats = st.categories
     val quotas = remember { cats.associate { it.id to st.math.effectiveQuota(it, st.balance(it.id)) } }
+    var kind by remember { mutableStateOf(initialKind) }
     var amount by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(if (salary) st.math.proposedSalaryDate() else st.today) }
+    var date by remember { mutableStateOf(if (initialKind == MovementKind.STIPENDIO) st.math.proposedSalaryDate() else st.today) }
     var note by remember { mutableStateOf("") }
-    var refMonth by remember { mutableStateOf(st.math.proposedSalaryMonth()) }
-    val alloc: SnapshotStateMap<String, String> = remember {
-        mutableStateMapOf<String, String>().apply { cats.forEach { put(it.id, if (salary) "" else "0,00") } }
-    }
+    val alloc: SnapshotStateMap<String, String> = remember { mutableStateMapOf() }
     var error by remember { mutableStateOf<String?>(null) }
+    val salary = kind == MovementKind.STIPENDIO
+    val fill = { text: String ->
+        // Quote proposte in ordine (SPEC.md §4.5), ricalcolate a ogni modifica dell'importo
+        st.math.salarySplit(Money.parse(text) ?: 0, cats, st.balances).proposals.forEach { (id, v) -> alloc[id] = Money.input(v) }
+    }
 
-    SectionTitle(if (salary) "Registra lo stipendio" else "Registra un'altra entrata")
+    SectionTitle("Registra un'entrata")
+    SelectField(
+        label = "Tipo",
+        options = listOf(MovementKind.STIPENDIO, MovementKind.STIPENDIO_EXTRA, MovementKind.ENTRATA),
+        selected = kind,
+        optionText = ::incomeLabel,
+        onSelect = {
+            kind = it
+            error = null
+            if (it == MovementKind.STIPENDIO) fill(amount)
+        },
+    )
     Notice(
-        if (salary) "Le quote fisse vengono distribuite in ordine. Puoi ritoccarle prima di confermare."
-        else "Di default resta tutto in \"Da assegnare\". Puoi già metterne una parte nei budget.",
+        when (kind) {
+            MovementKind.STIPENDIO -> "Riempie i vasetti fino al prossimo stipendio: le quote fisse vengono distribuite in ordine e puoi ritoccarle prima di confermare."
+            MovementKind.STIPENDIO_EXTRA -> "Tredicesima, quattordicesima e simili: non riempiono i vasetti, vanno tutte in \"Da assegnare\"."
+            else -> "Rimborsi, regali e altre entrate: non riempiono i vasetti, vanno tutte in \"Da assegnare\"."
+        },
     )
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         AmountField(amount, {
             amount = it
             error = null
-            if (salary) {
-                // Ridistribuisce le quote in ordine a ogni modifica dell'importo (SPEC.md §4.5)
-                val split = st.math.salarySplit(Money.parse(it) ?: 0, cats, st.balances)
-                split.proposals.forEach { (id, v) -> alloc[id] = Money.input(v) }
-            }
+            if (salary) fill(it)
         }, "Importo", Modifier.weight(1f))
         DateField("Data", date, { d -> if (d != null) date = d }, Modifier.weight(1f))
     }
-    if (salary) {
-        // Mese a cui si riferisce lo stipendio: decide in quale mese contano entrate e quote (es. pagato il 31/10 per novembre)
-        val months = (-1L..2L).map { YearMonth.from(date).plusMonths(it) }.let { if (refMonth in it) it else it + refMonth }.sorted()
-        SelectField("Mese di riferimento", months, refMonth, Formats::monthLong, { refMonth = it })
+    if (salary) Notice("Periodo: ${st.math.periodLabel(st.math.periodOf(date.plusDays(BudgetMath.SALARY_EARLY_DAYS)))}")
+    if (!salary) {
+        TextInput(
+            note, { note = it }, "Descrizione",
+            placeholder = if (kind == MovementKind.STIPENDIO_EXTRA) "es. tredicesima" else "es. rimborso, regalo",
+        )
     }
-    if (!salary) TextInput(note, { note = it }, "Descrizione", placeholder = "es. rimborso, regalo, bonus")
-    BoxedRows {
-        cats.forEachIndexed { i, c ->
-            if (i > 0) RowDivider()
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(c.name)
-                    Text(quotaSubtitle(st, c, quotas[c.id] ?: 0), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
+    if (salary) {
+        BoxedRows {
+            cats.forEachIndexed { i, c ->
+                if (i > 0) RowDivider()
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(c.name)
+                        Text(quotaSubtitle(st, c, quotas[c.id] ?: 0), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
+                    }
+                    AmountField(alloc[c.id].orEmpty(), {
+                        alloc[c.id] = it
+                        error = null
+                    }, null, Modifier.width(130.dp))
                 }
-                AmountField(alloc[c.id].orEmpty(), {
-                    alloc[c.id] = it
-                    error = null
-                }, null, Modifier.width(130.dp))
             }
+            RowDivider()
+            SummaryRow("Resta in \"Da assegnare\"", (Money.parse(amount) ?: 0) - Forms.sumOf(alloc.values), emphasized = true)
         }
-        RowDivider()
-        SummaryRow("Resta in \"Da assegnare\"", (Money.parse(amount) ?: 0) - Forms.sumOf(alloc.values), emphasized = true)
     }
     ErrorText(error)
     SheetButtons("Conferma", onConfirm = {
-        when (val r = Forms.income(amount, cats.associate { it.id to alloc[it.id].orEmpty() })) {
+        val texts = if (salary) cats.associate { it.id to alloc[it.id].orEmpty() } else emptyMap()
+        when (val r = Forms.income(amount, texts)) {
             is Checked.Error -> error = r.message
             is Checked.Ok -> {
-                val kind = if (salary) MovementKind.STIPENDIO else MovementKind.ENTRATA
                 vm.record(
-                    vm.newMovement(kind, date, r.value.amount, note = if (salary) null else note, allocations = r.value.allocations)
-                        .copy(refMonth = if (salary && refMonth != YearMonth.from(date)) refMonth else null),
-                    if (salary) "Stipendio di ${Formats.monthLong(refMonth)} registrato: ${Formats.eur(r.value.amount)}"
-                    else "Entrata di ${Formats.eur(r.value.amount)} registrata",
+                    vm.newMovement(kind, date, r.value.amount, note = if (salary) null else note, allocations = r.value.allocations),
+                    if (kind == MovementKind.ENTRATA) "Entrata di ${Formats.eur(r.value.amount)} registrata"
+                    else "${incomeLabel(kind)} di ${Formats.eur(r.value.amount)} registrato",
                 )
                 close()
             }
