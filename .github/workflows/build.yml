@@ -40,7 +40,10 @@ jobs:
             echo "::error::SIGNING_KEYSTORE_BASE64 non è un base64 valido: rigeneralo come in docs/FIRMA.md"
             exit 1
           fi
-          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_STORE_PASSWORD" > /dev/null; then
+          if ! OUT=$(keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_STORE_PASSWORD" 2>&1); then
+            # Diagnostica senza segreti: dimensione e tipo del file decodificato, messaggio di keytool
+            echo "Keystore decodificato: $(stat -c %s "$RUNNER_TEMP/release.jks") byte, tipo: $(file -b "$RUNNER_TEMP/release.jks")"
+            echo "$OUT" | grep -i "error" || true
             echo "::error::Il keystore non si apre: controlla SIGNING_KEYSTORE_BASE64 e SIGNING_STORE_PASSWORD"
             exit 1
           fi
