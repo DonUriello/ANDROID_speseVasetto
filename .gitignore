@@ -1,0 +1,18 @@
+# Gradle / build
+.gradle/
+build/
+.kotlin/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Firma: il keystore non va mai nel repository
+*.jks
+*.keystore
+keystore.properties
