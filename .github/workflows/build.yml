@@ -33,8 +33,17 @@ jobs:
         if: env.HAS_SIGNING == 'true'
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: |
-          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          # Spazi e a capo incollati per sbaglio nel secret non contano
+          if ! printf '%s' "$SIGNING_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$RUNNER_TEMP/release.jks"; then
+            echo "::error::SIGNING_KEYSTORE_BASE64 non è un base64 valido: rigeneralo come in docs/FIRMA.md"
+            exit 1
+          fi
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_STORE_PASSWORD" > /dev/null; then
+            echo "::error::Il keystore non si apre: controlla SIGNING_KEYSTORE_BASE64 e SIGNING_STORE_PASSWORD"
+            exit 1
+          fi
           echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Test e build di release
