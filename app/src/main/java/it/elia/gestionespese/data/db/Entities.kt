@@ -9,6 +9,7 @@ import it.elia.gestionespese.core.CategoryKind
 import it.elia.gestionespese.core.FillMode
 import it.elia.gestionespese.core.MovementKind
 import java.time.LocalDate
+import java.time.YearMonth
 
 // Tabelle Room (SPEC.md §3). Importi in centesimi, date come testo ISO yyyy-MM-dd.
 // Nessuna foreign key su categoryId: i movimenti di un budget eliminato restano nello storico.
@@ -47,6 +48,8 @@ data class MovementEntity(
     val note: String?,
     val total: Long?,
     @ColumnInfo(name = "created_at") val createdAt: Long,
+    /** Solo stipendi: mese di riferimento "yyyy-MM" se diverso da quello della data (dalla versione 2). */
+    @ColumnInfo(name = "ref_month") val refMonth: YearMonth? = null,
 )
 
 /** Quota di un movimento verso un budget, con segno. Si cancella insieme al movimento. */

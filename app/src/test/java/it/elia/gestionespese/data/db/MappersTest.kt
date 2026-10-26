@@ -9,6 +9,7 @@ import it.elia.gestionespese.core.Shortcut
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
+import java.time.YearMonth
 
 class MappersTest {
 
@@ -24,7 +25,7 @@ class MappersTest {
     fun `movimento con quote andata e ritorno`() {
         val m = Movement(
             id = "m", kind = MovementKind.STIPENDIO, date = LocalDate.of(2026, 10, 27), amount = 165030,
-            createdAt = 1793010500127, allocations = mapOf("a" to 15000, "b" to 6000),
+            createdAt = 1793010500127, allocations = mapOf("a" to 15000, "b" to 6000), refMonth = YearMonth.of(2026, 11),
         )
         val back = MovementWithAllocations(m.toEntity(), m.allocationEntities()).toDomain()
         assertEquals(m, back)

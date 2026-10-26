@@ -63,6 +63,7 @@ import it.elia.gestionespese.ui.components.SummaryRow
 import it.elia.gestionespese.ui.components.TextInput
 import it.elia.gestionespese.ui.theme.AppTheme
 import it.elia.gestionespese.ui.theme.tabular
+import java.time.YearMonth
 
 /** Precompilazione del modulo Spesa (es. da una spesa rapida con ✎). */
 data class ExpensePrefill(val title: String, val amount: Long, val categoryId: String, val note: String)
@@ -123,6 +124,7 @@ private fun IncomeForm(st: UiState, vm: MainViewModel, salary: Boolean, close: (
     var amount by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(if (salary) st.math.proposedSalaryDate() else st.today) }
     var note by remember { mutableStateOf("") }
+    var refMonth by remember { mutableStateOf(st.math.proposedSalaryMonth()) }
     val alloc: SnapshotStateMap<String, String> = remember {
         mutableStateMapOf<String, String>().apply { cats.forEach { put(it.id, if (salary) "" else "0,00") } }
     }
@@ -144,6 +146,11 @@ private fun IncomeForm(st: UiState, vm: MainViewModel, salary: Boolean, close: (
             }
         }, "Importo", Modifier.weight(1f))
         DateField("Data", date, { d -> if (d != null) date = d }, Modifier.weight(1f))
+    }
+    if (salary) {
+        // Mese a cui si riferisce lo stipendio: decide in quale mese contano entrate e quote (es. pagato il 31/10 per novembre)
+        val months = (-1L..2L).map { YearMonth.from(date).plusMonths(it) }.let { if (refMonth in it) it else it + refMonth }.sorted()
+        SelectField("Mese di riferimento", months, refMonth, Formats::monthLong, { refMonth = it })
     }
     if (!salary) TextInput(note, { note = it }, "Descrizione", placeholder = "es. rimborso, regalo, bonus")
     BoxedRows {
@@ -170,8 +177,9 @@ private fun IncomeForm(st: UiState, vm: MainViewModel, salary: Boolean, close: (
             is Checked.Ok -> {
                 val kind = if (salary) MovementKind.STIPENDIO else MovementKind.ENTRATA
                 vm.record(
-                    vm.newMovement(kind, date, r.value.amount, note = if (salary) null else note, allocations = r.value.allocations),
-                    if (salary) "Stipendio di ${Formats.eur(r.value.amount)} registrato"
+                    vm.newMovement(kind, date, r.value.amount, note = if (salary) null else note, allocations = r.value.allocations)
+                        .copy(refMonth = if (salary && refMonth != YearMonth.from(date)) refMonth else null),
+                    if (salary) "Stipendio di ${Formats.monthLong(refMonth)} registrato: ${Formats.eur(r.value.amount)}"
                     else "Entrata di ${Formats.eur(r.value.amount)} registrata",
                 )
                 close()

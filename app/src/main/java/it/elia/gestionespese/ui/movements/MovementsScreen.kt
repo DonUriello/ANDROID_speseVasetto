@@ -61,9 +61,9 @@ fun MovementsScreen(
     val catId = filter.categoryId?.takeIf { st.category(it) != null }
     val month = filter.month?.takeIf { it in months }
     val shown = st.data.movements
-        .filter { (month == null || YearMonth.from(it.date) == month) && (catId == null || MovementText.touches(it, catId)) }
+        .filter { (month == null || it.month == month) && (catId == null || MovementText.touches(it, catId)) }
         .sortedWith(compareByDescending<Movement> { it.date }.thenByDescending { it.createdAt })
-    val byMonth = shown.groupBy { YearMonth.from(it.date) }
+    val byMonth = shown.groupBy { it.month }
 
     LazyColumn(
         contentPadding = contentPadding,
