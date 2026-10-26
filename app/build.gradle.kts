@@ -11,7 +11,7 @@ val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
 
 android {
     namespace = "it.elia.gestionespese"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "it.elia.gestionespese"
