@@ -79,6 +79,7 @@ sealed interface Sheet {
     data class Expense(val prefill: ExpensePrefill? = null) : Sheet
     data object Assign : Sheet
     data class Take(val categoryId: String) : Sheet
+    data class Add(val categoryId: String) : Sheet
     data object Reset : Sheet
     data object Quick : Sheet
     data class DeleteCategory(val categoryId: String) : Sheet
@@ -114,6 +115,7 @@ fun SheetHost(
                 is Sheet.Expense -> ExpenseForm(st, vm, sheet.prefill, close)
                 Sheet.Assign -> AssignForm(st, vm, close)
                 is Sheet.Take -> st.category(sheet.categoryId)?.let { TakeForm(st, vm, it, close) }
+                is Sheet.Add -> st.category(sheet.categoryId)?.let { AddForm(st, vm, it, close) }
                 Sheet.Reset -> ResetForm(st, vm, close)
                 Sheet.Quick -> QuickList(st, vm, onOpen, onGoToSettings)
                 is Sheet.DeleteCategory -> st.category(sheet.categoryId)?.let { DeleteCategoryForm(st, vm, it, close) }
@@ -292,6 +294,76 @@ private fun AssignForm(st: UiState, vm: MainViewModel, close: () -> Unit) {
                     vm.newMovement(MovementKind.ASSEGNA, st.today, 0, allocations = r.value),
                     "Assegnati ${Formats.eur(r.value.values.sum())}",
                 )
+                close()
+            }
+        }
+    }, onCancel = close)
+}
+
+// ---------- aggiungi a un budget ----------
+
+/**
+ * Aggiunge soldi a un budget (es. svuotato e non ricaricato): da "Da assegnare" (un'assegnazione)
+ * oppure da un altro budget (uno spostamento, non una spesa).
+ */
+@Composable
+private fun AddForm(st: UiState, vm: MainViewModel, c: Category, close: () -> Unit) {
+    val toAssign = st.balances.toAssign
+    val others = st.categories.filter { it.id != c.id }
+    var amount by remember { mutableStateOf("") }
+    var source by remember {
+        mutableStateOf(if (toAssign > 0) null else others.firstOrNull { st.balance(it.id) > 0 }?.id)
+    }
+    var error by remember { mutableStateOf<String?>(null) }
+    val available = source?.let { st.balance(it) } ?: toAssign
+
+    SheetTitle("Aggiungi a ${c.name}")
+    Row {
+        Notice("Saldo attuale: ")
+        Amount(st.balance(c.id), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
+    }
+    AmountField(amount, {
+        amount = it
+        error = null
+    }, "Quanto aggiungere", background = AppTheme.colors.peachSoft)
+    SelectField(
+        label = "Da dove",
+        options = listOf<String?>(null) + others.map { it.id },
+        selected = source,
+        optionText = { id ->
+            if (id == null) "${MovementText.TO_ASSIGN} · ${Formats.eur(toAssign)}"
+            else "${st.category(id)?.name} · ${Formats.eur(st.balance(id))}"
+        },
+        onSelect = {
+            source = it
+            error = null
+        },
+    )
+    Notice(
+        when {
+            source != null -> "Sposta i soldi da ${st.category(source)?.name}: non è una spesa."
+            toAssign <= 0 -> "\"Da assegnare\" è vuoto: registra prima un'entrata con + oppure prendi da un altro budget."
+            else -> "Prende dai soldi non ancora assegnati."
+        },
+    )
+    ErrorText(error)
+    SheetButtons("Aggiungi", onConfirm = {
+        when (val r = Forms.addTo(amount, available)) {
+            is Checked.Error -> error = r.message
+            is Checked.Ok -> {
+                val v = r.value
+                val from = source
+                if (from == null) {
+                    vm.record(
+                        vm.newMovement(MovementKind.ASSEGNA, st.today, 0, allocations = mapOf(c.id to v)),
+                        "Aggiunti ${Formats.eur(v)} a ${c.name}",
+                    )
+                } else {
+                    vm.record(
+                        vm.newMovement(MovementKind.PRELEVA, st.today, 0, allocations = linkedMapOf(from to -v, c.id to v)),
+                        "${Formats.eur(v)} spostati da ${st.category(from)?.name} a ${c.name}",
+                    )
+                }
                 close()
             }
         }

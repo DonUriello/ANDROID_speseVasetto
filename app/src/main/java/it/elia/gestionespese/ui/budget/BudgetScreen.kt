@@ -55,6 +55,7 @@ class BudgetActions(
     val onSalary: () -> Unit,
     val onAssign: () -> Unit,
     val onTake: (Category) -> Unit,
+    val onAdd: (Category) -> Unit,
     val onShowMovements: (Category) -> Unit,
     val onCreateFirst: () -> Unit,
     val onSeed: () -> Unit,
@@ -225,7 +226,8 @@ private fun SpendRow(card: BudgetCard, background: Color, actions: BudgetActions
                 Text(card.levelLine, style = MaterialTheme.typography.bodySmall.tabular(), color = colors.muted)
                 for (line in card.lines) InfoLine(line, colors.muted, colors.ink, colors.neg)
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SquareButton(AppIcons.Plus, "Aggiungi soldi a ${c.name}", accent = true) { actions.onAdd(c) }
                 SquareButton(AppIcons.Swap, "Togli o sposta soldi da ${c.name}") { actions.onTake(c) }
                 SquareButton(AppIcons.List, "Movimenti di ${c.name}") { actions.onShowMovements(c) }
             }
@@ -267,6 +269,7 @@ private fun GoalRow(card: BudgetCard, actions: BudgetActions, modifier: Modifier
             }
             for (line in card.lines) InfoLine(line, colors.onNavyMuted, colors.amber, colors.warnOnNavy)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                SquareButton(AppIcons.Plus, "Aggiungi soldi a ${c.name}", accent = true) { actions.onAdd(c) }
                 SquareButton(AppIcons.Swap, "Togli o sposta soldi da ${c.name}", light = false) { actions.onTake(c) }
                 SquareButton(AppIcons.List, "Movimenti di ${c.name}", light = false) { actions.onShowMovements(c) }
             }
@@ -290,13 +293,23 @@ private fun InfoLine(parts: List<TextPart>, base: Color, highlight: Color, warn:
 }
 
 @Composable
-private fun SquareButton(icon: ImageVector, description: String, light: Boolean = true, onClick: () -> Unit) {
+private fun SquareButton(
+    icon: ImageVector,
+    description: String,
+    light: Boolean = true,
+    accent: Boolean = false,
+    onClick: () -> Unit,
+) {
     val colors = AppTheme.colors
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (light) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.16f),
-        contentColor = if (light) Color(0xFF2E3E5C) else colors.onNavy,
+        color = when {
+            accent -> colors.peach
+            light -> Color.White.copy(alpha = 0.7f)
+            else -> Color.White.copy(alpha = 0.16f)
+        },
+        contentColor = if (accent || light) Color(0xFF2E3E5C) else colors.onNavy,
         modifier = Modifier.size(44.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {

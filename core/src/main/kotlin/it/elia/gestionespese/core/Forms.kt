@@ -56,6 +56,14 @@ object Forms {
         return Checked.Ok(v)
     }
 
+    /** Aggiungi a un budget prendendo da una fonte che ha [available]: 0 < importo ≤ disponibile. */
+    fun addTo(text: String, available: Long): Checked<Long> {
+        val v = Money.parse(text)
+        if (v == null || v <= 0) return Checked.Error(AMOUNT_REQUIRED)
+        if (v > available) return Checked.Error("Disponibili solo ${Formats.eur(maxOf(0L, available))}.")
+        return Checked.Ok(v)
+    }
+
     /** Totale reale del conto: ≥ 0. */
     fun accountTotal(text: String): Checked<Long> {
         val v = Money.parse(text)

@@ -56,6 +56,14 @@ class FormsTest {
     }
 
     @Test
+    fun `aggiungi a un budget`() {
+        assertEquals(Checked.Ok(500L), Forms.addTo("5", 500))
+        assertEquals(Checked.Error("Disponibili solo 5,00\u00A0€."), Forms.addTo("6", 500))
+        assertEquals(Checked.Error("Disponibili solo 0,00\u00A0€."), Forms.addTo("1", -300))
+        assertEquals(Checked.Error(Forms.AMOUNT_REQUIRED), Forms.addTo("", 500))
+    }
+
+    @Test
     fun `togli e rettifica`() {
         assertEquals(Checked.Error("Puoi togliere al massimo 5,00 €."), Forms.take("6", 500))
         assertEquals(Checked.Ok(500L), Forms.take("5", 500))
