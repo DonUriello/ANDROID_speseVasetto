@@ -223,7 +223,7 @@ private fun quotaSubtitle(st: UiState, c: Category, q: Long): String = when {
 @Composable
 private fun ExpenseForm(st: UiState, vm: MainViewModel, prefill: ExpensePrefill?, close: () -> Unit) {
     val cats = st.categories
-    var amount by remember { mutableStateOf(prefill?.amount?.let(Money::input).orEmpty()) }
+    var amount by remember { mutableStateOf(prefill?.amount?.takeIf { it > 0 }?.let(Money::input).orEmpty()) }
     var date by remember { mutableStateOf(st.today) }
     var catId by remember { mutableStateOf(prefill?.categoryId?.takeIf { st.category(it) != null } ?: cats.first().id) }
     var note by remember { mutableStateOf(prefill?.note.orEmpty()) }
@@ -561,8 +561,8 @@ private fun InfoChip(text: String) {
 
 @Composable
 private fun stripColor(i: Int): Color {
-    val c = AppTheme.colors
-    return listOf(c.peach, c.chartIn, c.amber, c.navy)[i % 4]
+    val bars = AppTheme.colors.bars
+    return bars[i % bars.size]
 }
 
 /** Riga di una quota: segno colorato, nome, sottotitolo e campo importo compatto. */

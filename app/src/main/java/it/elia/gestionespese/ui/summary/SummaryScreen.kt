@@ -49,12 +49,13 @@ import it.elia.gestionespese.core.MonthSummary
 import it.elia.gestionespese.ui.UiState
 import it.elia.gestionespese.ui.components.Amount
 import it.elia.gestionespese.ui.components.Panel
+import it.elia.gestionespese.ui.components.PillChip
 import it.elia.gestionespese.ui.components.ProgressBar
 import it.elia.gestionespese.ui.components.RowDivider
 import it.elia.gestionespese.ui.components.ScreenTitle
 import it.elia.gestionespese.ui.components.SectionTitle
 import it.elia.gestionespese.ui.theme.AppTheme
-import it.elia.gestionespese.ui.theme.Rubik
+import it.elia.gestionespese.ui.theme.AppFont
 import it.elia.gestionespese.ui.theme.tabular
 import java.time.YearMonth
 import kotlin.math.max
@@ -89,49 +90,35 @@ fun SummaryScreen(st: UiState, contentPadding: PaddingValues) {
     }
 }
 
-/** Testata pesca con titolo, periodi e il riquadro dei totali che la sovrasta. */
+/** Titolo, periodi a pillola e card nera con i totali del periodo. */
 @Composable
 private fun Header(st: UiState, periods: List<YearMonth>, selected: YearMonth?, onSelect: (YearMonth) -> Unit, summary: MonthSummary?) {
     val colors = AppTheme.colors
-    Box(Modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .matchParentSize()
-                .padding(bottom = if (summary != null) 44.dp else 0.dp)
-                .background(colors.peachSoft, RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)),
-        )
-        Column(
-            Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = if (summary != null) 0.dp else 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            ScreenTitle("Riepilogo")
-            if (selected != null) {
-                Text(st.math.periodLabel(selected), color = colors.muted)
-                val scroll = rememberScrollState(Int.MAX_VALUE)
-                Row(Modifier.horizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (p in periods) {
-                        val on = p == selected
-                        Surface(
-                            onClick = { onSelect(p) },
-                            shape = RoundedCornerShape(50),
-                            color = if (on) colors.peach else Color.White.copy(alpha = 0.6f),
-                            contentColor = Color(0xFF2E3E5C),
-                        ) {
-                            Text(
-                                Formats.monthShort(p),
-                                Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                            )
-                        }
-                    }
-                }
+    Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ScreenTitle("Riepilogo")
+        if (selected != null) {
+            val scroll = rememberScrollState(Int.MAX_VALUE)
+            Row(Modifier.horizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (p in periods) PillChip(Formats.monthShort(p), p == selected, { onSelect(p) })
             }
-            if (summary != null) {
-                Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Stat("Entrate", summary.income, colors.income, Modifier.weight(1f))
-                        Stat("Spese", summary.expenses, colors.ink, Modifier.weight(1f))
-                        Stat("Differenza", summary.difference, colors.ink, Modifier.weight(1f))
+        }
+        if (summary != null && selected != null) {
+            Surface(shape = RoundedCornerShape(24.dp), color = colors.header, contentColor = colors.onHeader) {
+                Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column {
+                        Text(st.math.periodLabel(selected), color = colors.onHeaderMuted, style = MaterialTheme.typography.bodyMedium)
+                        Amount(
+                            summary.difference,
+                            prefix = if (summary.difference > 0) "+" else "",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colors.onHeader,
+                            negativeRed = false,
+                        )
+                        Text("differenza del periodo", color = colors.onHeaderMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Stat("Entrate", summary.income, colors.onHeader, Modifier.weight(1f), colors.onHeaderMuted)
+                        Stat("Spese", summary.expenses, colors.onHeader, Modifier.weight(1f), colors.onHeaderMuted)
                     }
                 }
             }
@@ -140,9 +127,9 @@ private fun Header(st: UiState, periods: List<YearMonth>, selected: YearMonth?, 
 }
 
 @Composable
-private fun Stat(label: String, cents: Long, color: Color, modifier: Modifier) {
+private fun Stat(label: String, cents: Long, color: Color, modifier: Modifier, labelColor: Color = AppTheme.colors.muted) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.muted)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = labelColor)
         Amount(cents, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = color)
     }
 }
@@ -151,7 +138,7 @@ private fun Stat(label: String, cents: Long, color: Color, modifier: Modifier) {
 @Composable
 private fun SpentPanel(st: UiState, s: MonthSummary) {
     val colors = AppTheme.colors
-    val barColors = listOf(colors.peach, colors.navy, colors.chartIn, colors.amber)
+    val barColors = colors.bars
     Panel(Modifier.padding(horizontal = 20.dp)) {
         SectionTitle("Speso per budget")
         st.categories.forEachIndexed { i, c ->
@@ -186,7 +173,7 @@ private fun niceMax(v: Double): Double {
 private fun ChartPanel(st: UiState, series: List<MonthSummary>, selected: YearMonth, onSelect: (YearMonth) -> Unit) {
     val colors = AppTheme.colors
     val measurer = rememberTextMeasurer()
-    val labelStyle = TextStyle(fontFamily = Rubik, fontSize = 11.sp, color = colors.muted)
+    val labelStyle = TextStyle(fontFamily = AppFont, fontSize = 11.sp, color = colors.muted)
     val labelStrong = labelStyle.copy(color = colors.ink, fontWeight = FontWeight.SemiBold)
     val maxEuro = niceMax(series.maxOf { max(it.income, it.expenses) } / 100.0)
     val sel = series.firstOrNull { it.month == selected }

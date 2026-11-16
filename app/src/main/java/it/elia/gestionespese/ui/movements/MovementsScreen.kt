@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,7 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import it.elia.gestionespese.core.Formats
 import it.elia.gestionespese.core.Movement
@@ -50,11 +53,10 @@ import it.elia.gestionespese.ui.components.PillChip
 import it.elia.gestionespese.ui.components.ScreenTitle
 import it.elia.gestionespese.ui.components.SectionTitle
 import it.elia.gestionespese.ui.components.SmallLabel
-import it.elia.gestionespese.ui.theme.AppColors
 import it.elia.gestionespese.ui.theme.AppTheme
 import it.elia.gestionespese.ui.theme.tabular
-import kotlinx.coroutines.delay
 import java.time.YearMonth
+import kotlinx.coroutines.delay
 
 /** Filtri della lista: budget e periodo (null = tutti). */
 data class MovementFilter(val categoryId: String? = null, val month: YearMonth? = null)
@@ -147,20 +149,24 @@ private fun PeriodPicker(st: UiState, periods: List<YearMonth>, selected: YearMo
     }
 }
 
-/** Fondo e striscia laterale per tipo di movimento. */
-private fun styleOf(kind: MovementKind, colors: AppColors, surface: Color): Pair<Color, Color> = when (kind) {
-    MovementKind.STIPENDIO, MovementKind.STIPENDIO_EXTRA, MovementKind.ENTRATA -> colors.tealSoft to colors.header
-    MovementKind.PRELEVA -> colors.amberSoft to colors.amber
-    MovementKind.ASSEGNA -> colors.blueSoft to colors.navy
-    MovementKind.RETTIFICA -> colors.sunk to colors.muted
-    MovementKind.SPESA -> surface to colors.peach
+/** Icona e colori del cerchio per tipo di movimento. */
+@Composable
+private fun badgeOf(kind: MovementKind): Triple<ImageVector, Color, Color> {
+    val c = AppTheme.colors
+    return when (kind) {
+        MovementKind.STIPENDIO, MovementKind.STIPENDIO_EXTRA, MovementKind.ENTRATA -> Triple(AppIcons.Plus, c.tealSoft, c.income)
+        MovementKind.SPESA -> Triple(AppIcons.Minus, c.sunk, c.ink)
+        MovementKind.PRELEVA -> Triple(AppIcons.Swap, c.peachSoft, c.ink)
+        MovementKind.ASSEGNA -> Triple(AppIcons.Assign, c.blueSoft, c.ink)
+        MovementKind.RETTIFICA -> Triple(AppIcons.Reset, c.amberSoft, c.ink)
+    }
 }
 
 @Composable
 private fun MovementCard(st: UiState, m: Movement, onDelete: (Movement) -> Unit) {
     val colors = AppTheme.colors
     val line = MovementText.describe(m) { st.category(it)?.name }
-    val (bg, strip) = styleOf(m.kind, colors, MaterialTheme.colorScheme.surface)
+    val (icon, circle, tint) = badgeOf(m.kind)
     var armed by remember(m.id) { mutableStateOf(false) }
     LaunchedEffect(armed) {
         if (armed) {
@@ -170,49 +176,45 @@ private fun MovementCard(st: UiState, m: Movement, onDelete: (Movement) -> Unit)
     }
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = bg,
+        color = MaterialTheme.colorScheme.surface,
         contentColor = colors.ink,
-        shadowElevation = if (m.kind == MovementKind.SPESA) 1.dp else 0.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.width(10.dp).fillMaxHeight().background(strip))
-            Column(Modifier.weight(1f).padding(start = 14.dp, end = 12.dp, top = 12.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Text(line.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+        Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(42.dp).background(circle, CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(line.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (line.subtitle.isNotEmpty()) {
+                        Text(line.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
                         line.sign + Formats.eur(line.amount),
-                        Modifier.padding(start = 8.dp),
-                        style = MaterialTheme.typography.titleMedium.tabular(),
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall.tabular(),
+                        fontWeight = FontWeight.SemiBold,
                         color = if (line.incoming) colors.income else colors.ink,
                         maxLines = 1,
                     )
+                    Text(Formats.dayMonth(m.date), style = MaterialTheme.typography.labelSmall, color = colors.muted)
                 }
-                if (line.subtitle.isNotEmpty()) {
-                    Text(line.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(Formats.dayMonth(m.date), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = colors.muted)
-                    if (armed) {
-                        Button(
-                            onClick = { onDelete(m) },
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp),
-                            modifier = Modifier.height(36.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.neg, contentColor = Color.White),
-                        ) { Text("Conferma eliminazione", style = MaterialTheme.typography.labelMedium) }
-                    } else {
-                        Surface(
-                            onClick = { armed = true },
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color.White.copy(alpha = 0.6f),
-                            contentColor = Color(0xFF4A5A70),
-                            modifier = Modifier.size(40.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(AppIcons.Trash, contentDescription = "Elimina ${line.title}", modifier = Modifier.size(18.dp))
-                            }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (armed) {
+                    Button(
+                        onClick = { onDelete(m) },
+                        shape = RoundedCornerShape(50),
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        modifier = Modifier.height(36.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.neg, contentColor = Color.White),
+                    ) { Text("Conferma eliminazione", style = MaterialTheme.typography.labelMedium) }
+                } else {
+                    Surface(onClick = { armed = true }, shape = CircleShape, color = Color.Transparent, contentColor = colors.muted, modifier = Modifier.size(36.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(AppIcons.Trash, contentDescription = "Elimina ${line.title}", modifier = Modifier.size(17.dp))
                         }
                     }
                 }
