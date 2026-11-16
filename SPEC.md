@@ -177,7 +177,7 @@ L'utente scrive il totale reale. `diff = nuovoTotale - totaleConto`. Se `diff �
 - Ogni budget è una riga a tutta larghezza (una per riga su telefono), non cliccabile:
   - a sinistra il **vasetto** (vetro, coperchio, monete; vedi `reference/prototipo-web.html`, funzione `jarSvg`);
   - al centro, dall'alto: nome; saldo in grande (rosso se negativo); riga del livello ("Restano 90,00 € di 150,00 € · 60%" oppure "45% di 800,00 €"); righe informative (quota a stipendio, scadenza, stipendi prima della scadenza, "Pieno con N stipendi, il {data}", avvisi in rosso);
-  - a destra, in colonna: badge (Spese blu, Obiettivo ambra, In rosso, Raggiunto), sotto il pulsante **+** (fondo pesca: aggiungi soldi da "Da assegnare" o da un altro budget), il pulsante **⇄** (togli/svuota/sposta) e il pulsante **☰** (fondo blu: apre Movimenti filtrati su quel budget).
+  - a destra, in colonna: badge (Spese blu, Obiettivo ambra, In rosso, Raggiunto), sotto il pulsante **⇄** (fondo verde: togli/svuota/sposta) e il pulsante **☰** (fondo blu: apre Movimenti filtrati su quel budget).
 - Obiettivi: sfondo leggermente ambrato.
 - Stato vuoto: invito a creare il primo budget, con opzione "Parti da un esempio modificabile".
 
@@ -186,7 +186,6 @@ L'utente scrive il totale reale. `diff = nuovoTotale - totaleConto`. Se `diff �
 - Stipendio extra e Altro: descrizione, nessuna quota (tutto in "Da assegnare").
 - **Spesa** (−): importo, data, budget (con saldo accanto), descrizione; avviso se il budget andrà in rosso.
 - **Assegna**: importi per budget, "Resta da assegnare", validazione ≤ disponibile.
-- **Aggiungi a un budget** (+): saldo attuale, importo, provenienza ("Da assegnare" → movimento ASSEGNA; altro budget → PRELEVA `{origine: -x, budget: +x}`), importo ≤ disponibile della provenienza.
 - **Togli da un budget** (⇄): saldo attuale, importo, pulsante "Svuota: tutto il saldo", destinazione (Da assegnare o altro budget), motivo facoltativo. Se saldo ≤ 0: solo messaggio.
 - **Reimposta totale iniziale**: totale reale, data, totale attuale e differenza in tempo reale.
 - **Spese rapide** (bottom sheet): lista di righe grandi (nome, importo, budget). Tocco = registra SPESA con data di oggi, chiude il sheet e mostra Snackbar "… registrata" con **Annulla**. Pulsante ✎ = apre il modulo Spesa precompilato.

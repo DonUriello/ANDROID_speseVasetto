@@ -150,7 +150,6 @@ fun MainScreen(vm: MainViewModel = viewModel(factory = MainViewModel.Factory)) {
                     onSalary = { sheet = Sheet.Salary },
                     onAssign = { sheet = Sheet.Assign },
                     onTake = { sheet = Sheet.Take(it.id) },
-                    onAdd = { sheet = Sheet.Add(it.id) },
                     onShowMovements = {
                         filter = MovementFilter(categoryId = it.id)
                         tab = Tab.MOVIMENTI

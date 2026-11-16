@@ -42,9 +42,6 @@ object AppIcons {
     /** Frecce opposte: togli o sposta. */
     val Swap = stroke("swap", "M7 7h12M15 3l4 4 -4 4", "M17 17H5M9 13l-4 4 4 4")
 
-    /** Più: aggiungi soldi a un budget. */
-    val Plus = stroke("plus", "M12 5v14M5 12h14")
-
     /** Cestino: elimina. */
     val Trash = stroke("trash", "M4 7h16M10 11v6M14 11v6", "M6 7l1 13h10l1-13M9 7V4h6v3")
 
