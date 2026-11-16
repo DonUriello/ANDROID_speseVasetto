@@ -54,7 +54,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-/** Card bianca arrotondata con ombra morbida: il contenitore di base dell'app. */
+/** Card bianca arrotondata su fondo grigio: il contenitore di base dell'app. */
 @Composable
 fun Panel(
     modifier: Modifier = Modifier,
@@ -63,9 +63,8 @@ fun Panel(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         color = color,
-        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
@@ -151,11 +150,11 @@ fun PillChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mod
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(50),
-        color = if (selected) colors.blueSoft else MaterialTheme.colorScheme.surface,
-        contentColor = if (selected) colors.ink else colors.muted,
+        color = if (selected) colors.header else MaterialTheme.colorScheme.surface,
+        contentColor = if (selected) colors.onHeader else colors.muted,
         modifier = modifier.heightIn(min = 40.dp),
     ) {
-        Box(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
             Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal, maxLines = 1)
         }
     }
@@ -420,14 +419,14 @@ fun SheetButtons(
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedButton(
             onClick = onCancel,
-            modifier = Modifier.weight(1f).height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.weight(1f).height(54.dp),
+            shape = RoundedCornerShape(50),
             border = BorderStroke(1.5.dp, colors.line),
         ) { Text(cancel, color = colors.ink) }
         Button(
             onClick = onConfirm,
-            modifier = Modifier.weight(1.4f).height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.weight(1.4f).height(54.dp),
+            shape = RoundedCornerShape(50),
             colors = if (danger) {
                 ButtonDefaults.buttonColors(containerColor = colors.neg, contentColor = Color.White)
             } else {

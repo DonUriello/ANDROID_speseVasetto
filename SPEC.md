@@ -209,19 +209,16 @@ L'utente scrive il totale reale. `diff = nuovoTotale - totaleConto`. Se `diff �
 - **Backup**: "Esporta backup" e "Importa backup" (vedi sezione 6).
 
 ### Stile e palette
-Stile "card pastello" (mock approvato da Elia): fondo caldo chiaro, card molto arrotondate (20–22 dp), font Rubik incluso nell'app, testata Budget teal con angoli inferiori arrotondati, obiettivi su card blu notte, Riepilogo con testata pesca.
+Stile "card bianche su grigio" scelto da Elia: fondo grigio chiaro, card bianche arrotondate (20 dp), font Inter incluso nell'app, card nera del saldo con azioni rotonde (Entrata, Spesa, Assegna, Rettifica), elenco dei budget con "saldo / riferimento", barra colorata e percentuale; ogni budget apre una pagina di dettaglio (avanzamento, spese per periodo, movimenti, pulsanti "Togli o sposta" e "Spesa"). Navigazione: pillola nera flottante con la scheda attiva in un cerchio bianco e "Spese rapide" verde al centro.
 
 | Token | Chiaro | Scuro | Uso |
 |---|---|---|---|
-| ink | #2E3E5C | #E8ECF2 | testo |
-| header | #2F7F72 | #1F5F55 | testata Budget, selezioni (testo bianco) |
-| peach | #F2A07B | #F2A07B | pulsante −, Conferma, Spese rapide (testo ink) |
-| amber | #F2B552 | #F2B552 | + Stipendio, monete, barre obiettivi |
-| peachSoft / tealSoft / amberSoft / blueSoft | #F9D3BE / #BFE0DC / #F7D78E / #C9D6EC | tinte scure | fondi delle card |
-| navy | #3B5280 | #2C3D63 | card obiettivi |
-| income | #1F6B5E | #7FD3C2 | importi in entrata |
-| neg | #B3261E | #F08A80 | in rosso, Elimina |
-| chartIn / chartOut | #5BAA9B / #F2B552 | idem | grafico entrate / spese |
+| ink | #111113 | #F5F5F7 | testo, azioni principali |
+| sfondo / card | #F2F2F4 / #FFFFFF | #000000 / #1C1C1E | |
+| header | #1C1C1E | #2C2C2E | card del saldo, selezioni (testo bianco) |
+| verde | #16A34A (pieno) · #22C55E (barre) | #30D158 | entrate, "Da assegnare", spese rapide |
+| barre budget | #22C55E · #F59E0B · #3B82F6 · #8B5CF6 | versioni chiare | a rotazione |
+| neg | #C62828 | #FF6B60 | in rosso, Elimina |
 
 Tema chiaro e scuro, entrambi curati.
 

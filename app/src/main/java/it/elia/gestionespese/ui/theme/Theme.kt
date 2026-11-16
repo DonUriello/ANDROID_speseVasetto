@@ -18,8 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import it.elia.gestionespese.R
 
 /**
- * Colori dell'app: card pastello (pesca, teal, ambra, azzurro), testata teal, card blu notte per gli
- * obiettivi, accento pesca. Ogni colore con testo sopra ha il suo "on…" con contrasto ≥ 4,5:1.
+ * Colori dell'app: fondo grigio chiaro, card bianche, nero per la card del saldo e le azioni principali,
+ * verde/arancio/blu/viola per le barre dei budget. Ogni colore con testo sopra ha il suo "on…" (≥ 4,5:1).
  */
 @Immutable
 data class AppColors(
@@ -27,22 +27,24 @@ data class AppColors(
     val ink: Color,
     val muted: Color,
     val line: Color,
+    /** Fondo dei campi e delle tracce delle barre. */
     val sunk: Color,
-    /** Testata della schermata Budget. */
+    /** Card del saldo (nera) e selezioni forti. */
     val header: Color,
     val onHeader: Color,
-    /** Accento caldo: pulsante −, Conferma, Spese rapide. */
+    val onHeaderMuted: Color,
+    /** Azione principale: pulsanti pieni, Conferma, pillola di navigazione. */
     val peach: Color,
     val onPeach: Color,
-    /** Ambra: "+ Stipendio", monete, barre di avanzamento. */
+    /** Verde: progressi, entrate, "Da assegnare". */
     val amber: Color,
     val onAmber: Color,
-    /** Fondi pastello delle card, con testo [ink]. */
+    /** Tinte chiare per icone e fondi secondari. */
     val peachSoft: Color,
     val tealSoft: Color,
     val amberSoft: Color,
     val blueSoft: Color,
-    /** Card degli obiettivi. */
+    /** Riquadri forti (es. "Resta in Da assegnare"). */
     val navy: Color,
     val onNavy: Color,
     val onNavyMuted: Color,
@@ -56,6 +58,8 @@ data class AppColors(
     val chartIn: Color,
     val chartInStrong: Color,
     val chartOut: Color,
+    /** Colori delle barre dei budget, a rotazione. */
+    val bars: List<Color>,
     // Nomi storici, usati da Impostazioni e moduli
     val accent: Color,
     val onAccent: Color,
@@ -70,94 +74,98 @@ data class AppColors(
 )
 
 private val LightAppColors = AppColors(
-    ink = Color(0xFF2E3E5C),
-    muted = Color(0xFF4A5A70),
-    line = Color(0xFFE2E5EA),
-    sunk = Color(0xFFF1EFEC),
-    header = Color(0xFF2F7F72),
+    ink = Color(0xFF111113),
+    muted = Color(0xFF6B6B70),
+    line = Color(0xFFE5E5EA),
+    sunk = Color(0xFFF2F2F4),
+    header = Color(0xFF1C1C1E),
     onHeader = Color.White,
-    peach = Color(0xFFF2A07B),
-    onPeach = Color(0xFF2E3E5C),
-    amber = Color(0xFFF2B552),
-    onAmber = Color(0xFF2E3E5C),
-    peachSoft = Color(0xFFF9D3BE),
-    tealSoft = Color(0xFFBFE0DC),
-    amberSoft = Color(0xFFF7D78E),
-    blueSoft = Color(0xFFC9D6EC),
-    navy = Color(0xFF3B5280),
+    onHeaderMuted = Color(0xFFB8B8BD),
+    peach = Color(0xFF111113),
+    onPeach = Color.White,
+    amber = Color(0xFF16A34A),
+    onAmber = Color.White,
+    peachSoft = Color(0xFFFFF1E6),
+    tealSoft = Color(0xFFE7F7EC),
+    amberSoft = Color(0xFFFFF6DA),
+    blueSoft = Color(0xFFEAF0FF),
+    navy = Color(0xFF1C1C1E),
     onNavy = Color.White,
-    onNavyMuted = Color(0xFFD5DCEA),
-    warnOnNavy = Color(0xFFFFB4A9),
-    income = Color(0xFF1F6B5E),
-    neg = Color(0xFFB3261E),
-    negSoft = Color(0xFFF8DEDB),
-    ok = Color(0xFF25804F),
+    onNavyMuted = Color(0xFFB8B8BD),
+    warnOnNavy = Color(0xFFFF9F94),
+    income = Color(0xFF15803D),
+    neg = Color(0xFFC62828),
+    negSoft = Color(0xFFFDE7E7),
+    ok = Color(0xFF15803D),
     onOk = Color.White,
-    chartIn = Color(0xFF5BAA9B),
-    chartInStrong = Color(0xFF2F7F72),
-    chartOut = Color(0xFFF2B552),
-    accent = Color(0xFF2F7F72),
+    chartIn = Color(0xFF22C55E),
+    chartInStrong = Color(0xFF15803D),
+    chartOut = Color(0xFF1C1C1E),
+    bars = listOf(Color(0xFF22C55E), Color(0xFFF59E0B), Color(0xFF3B82F6), Color(0xFF8B5CF6)),
+    accent = Color(0xFF111113),
     onAccent = Color.White,
-    accentSoft = Color(0xFFDCEFEC),
-    spend = Color(0xFF3B5280),
-    spendSoft = Color(0xFFC9D6EC),
-    goal = Color(0xFF8A5A00),
-    goalSoft = Color(0xFFF7D78E),
-    goalTint = Color(0xFFFBF5E8),
-    quick = Color(0xFFF2A07B),
-    onQuick = Color(0xFF2E3E5C),
+    accentSoft = Color(0xFFE7F7EC),
+    spend = Color(0xFF111113),
+    spendSoft = Color(0xFFF2F2F4),
+    goal = Color(0xFF9A5B00),
+    goalSoft = Color(0xFFFFF6DA),
+    goalTint = Color(0xFFFFFFFF),
+    quick = Color(0xFF111113),
+    onQuick = Color.White,
 )
 
 private val DarkAppColors = AppColors(
-    ink = Color(0xFFE8ECF2),
-    muted = Color(0xFFA9B4C4),
-    line = Color(0xFF334052),
-    sunk = Color(0xFF252E3B),
-    header = Color(0xFF1F5F55),
+    ink = Color(0xFFF5F5F7),
+    muted = Color(0xFFA1A1A6),
+    line = Color(0xFF38383A),
+    sunk = Color(0xFF2C2C2E),
+    header = Color(0xFF2C2C2E),
     onHeader = Color.White,
-    peach = Color(0xFFF2A07B),
-    onPeach = Color(0xFF1E2633),
-    amber = Color(0xFFF2B552),
-    onAmber = Color(0xFF1E2633),
-    peachSoft = Color(0xFF55372A),
-    tealSoft = Color(0xFF22463F),
-    amberSoft = Color(0xFF524221),
-    blueSoft = Color(0xFF2A3A55),
-    navy = Color(0xFF2C3D63),
+    onHeaderMuted = Color(0xFFB8B8BD),
+    peach = Color(0xFFF5F5F7),
+    onPeach = Color(0xFF111113),
+    amber = Color(0xFF30D158),
+    onAmber = Color(0xFF0B1A10),
+    peachSoft = Color(0xFF3A2A1E),
+    tealSoft = Color(0xFF1E3326),
+    amberSoft = Color(0xFF3A3218),
+    blueSoft = Color(0xFF1E2840),
+    navy = Color(0xFF2C2C2E),
     onNavy = Color.White,
-    onNavyMuted = Color(0xFFC6CFDF),
-    warnOnNavy = Color(0xFFFFB4A9),
-    income = Color(0xFF7FD3C2),
-    neg = Color(0xFFF08A80),
-    negSoft = Color(0xFF4A2522),
-    ok = Color(0xFF4CB87E),
-    onOk = Color(0xFF08170F),
-    chartIn = Color(0xFF5BAA9B),
-    chartInStrong = Color(0xFF8FD6C8),
-    chartOut = Color(0xFFF2B552),
-    accent = Color(0xFF7FD3C2),
-    onAccent = Color(0xFF0B1714),
-    accentSoft = Color(0xFF22463F),
-    spend = Color(0xFFA9C1EA),
-    spendSoft = Color(0xFF2A3A55),
-    goal = Color(0xFFF2C46B),
-    goalSoft = Color(0xFF524221),
-    goalTint = Color(0xFF2A2619),
-    quick = Color(0xFFF2A07B),
-    onQuick = Color(0xFF1E2633),
+    onNavyMuted = Color(0xFFB8B8BD),
+    warnOnNavy = Color(0xFFFF9F94),
+    income = Color(0xFF30D158),
+    neg = Color(0xFFFF6B60),
+    negSoft = Color(0xFF3D1E1C),
+    ok = Color(0xFF30D158),
+    onOk = Color(0xFF0B1A10),
+    chartIn = Color(0xFF30D158),
+    chartInStrong = Color(0xFF7BE495),
+    chartOut = Color(0xFFF5F5F7),
+    bars = listOf(Color(0xFF30D158), Color(0xFFFFB340), Color(0xFF64A0FF), Color(0xFFB08CFF)),
+    accent = Color(0xFFF5F5F7),
+    onAccent = Color(0xFF111113),
+    accentSoft = Color(0xFF1E3326),
+    spend = Color(0xFFF5F5F7),
+    spendSoft = Color(0xFF2C2C2E),
+    goal = Color(0xFFFFB340),
+    goalSoft = Color(0xFF3A3218),
+    goalTint = Color(0xFF1C1C1E),
+    quick = Color(0xFFF5F5F7),
+    onQuick = Color(0xFF111113),
 )
 
 private val LocalAppColors = staticCompositionLocalOf { LightAppColors }
 
 private val LightScheme = lightColorScheme(
-    primary = LightAppColors.header,
-    onPrimary = Color.White,
+    primary = LightAppColors.peach,
+    onPrimary = LightAppColors.onPeach,
     primaryContainer = LightAppColors.tealSoft,
     onPrimaryContainer = LightAppColors.ink,
-    secondary = LightAppColors.navy,
+    secondary = LightAppColors.ink,
     tertiary = LightAppColors.amber,
     error = LightAppColors.neg,
-    background = Color(0xFFF6F4F1),
+    background = Color(0xFFF2F2F4),
     onBackground = LightAppColors.ink,
     surface = Color.White,
     onSurface = LightAppColors.ink,
@@ -167,58 +175,58 @@ private val LightScheme = lightColorScheme(
     surfaceContainer = Color.White,
     surfaceContainerHigh = Color.White,
     surfaceContainerHighest = LightAppColors.sunk,
-    outline = Color(0xFF8A96A6),
+    outline = Color(0xFF8E8E93),
     outlineVariant = LightAppColors.line,
 )
 
 private val DarkScheme = darkColorScheme(
-    primary = DarkAppColors.accent,
-    onPrimary = DarkAppColors.onAccent,
+    primary = DarkAppColors.peach,
+    onPrimary = DarkAppColors.onPeach,
     primaryContainer = DarkAppColors.tealSoft,
     onPrimaryContainer = DarkAppColors.ink,
-    secondary = DarkAppColors.spend,
+    secondary = DarkAppColors.ink,
     tertiary = DarkAppColors.amber,
     error = DarkAppColors.neg,
-    background = Color(0xFF151B24),
+    background = Color(0xFF000000),
     onBackground = DarkAppColors.ink,
-    surface = Color(0xFF1E2631),
+    surface = Color(0xFF1C1C1E),
     onSurface = DarkAppColors.ink,
     surfaceVariant = DarkAppColors.sunk,
     onSurfaceVariant = DarkAppColors.muted,
-    surfaceContainerLow = Color(0xFF1E2631),
-    surfaceContainer = Color(0xFF212A36),
-    surfaceContainerHigh = Color(0xFF242D3A),
+    surfaceContainerLow = Color(0xFF1C1C1E),
+    surfaceContainer = Color(0xFF1C1C1E),
+    surfaceContainerHigh = Color(0xFF242426),
     surfaceContainerHighest = DarkAppColors.sunk,
-    outline = Color(0xFF6F7C8E),
+    outline = Color(0xFF8E8E93),
     outlineVariant = DarkAppColors.line,
 )
 
-/** Rubik, incluso nell'app (licenza SIL OFL in assets/licenses). */
-val Rubik = FontFamily(
-    Font(R.font.rubik_regular, FontWeight.Normal),
-    Font(R.font.rubik_medium, FontWeight.Medium),
-    Font(R.font.rubik_semibold, FontWeight.SemiBold),
-    Font(R.font.rubik_bold, FontWeight.Bold),
+/** Inter, incluso nell'app (licenza SIL OFL in assets/licenses). */
+val AppFont = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold),
 )
 
 private val AppTypography: Typography = Typography().let { t ->
-    fun TextStyle.rubik() = copy(fontFamily = Rubik)
+    fun TextStyle.withAppFont() = copy(fontFamily = AppFont)
     Typography(
-        displayLarge = t.displayLarge.rubik(),
-        displayMedium = t.displayMedium.rubik(),
-        displaySmall = t.displaySmall.rubik(),
-        headlineLarge = t.headlineLarge.rubik(),
-        headlineMedium = t.headlineMedium.rubik(),
-        headlineSmall = t.headlineSmall.rubik(),
-        titleLarge = t.titleLarge.rubik(),
-        titleMedium = t.titleMedium.rubik(),
-        titleSmall = t.titleSmall.rubik(),
-        bodyLarge = t.bodyLarge.rubik(),
-        bodyMedium = t.bodyMedium.rubik(),
-        bodySmall = t.bodySmall.rubik(),
-        labelLarge = t.labelLarge.rubik(),
-        labelMedium = t.labelMedium.rubik(),
-        labelSmall = t.labelSmall.rubik(),
+        displayLarge = t.displayLarge.withAppFont(),
+        displayMedium = t.displayMedium.withAppFont(),
+        displaySmall = t.displaySmall.withAppFont(),
+        headlineLarge = t.headlineLarge.withAppFont(),
+        headlineMedium = t.headlineMedium.withAppFont(),
+        headlineSmall = t.headlineSmall.withAppFont(),
+        titleLarge = t.titleLarge.withAppFont(),
+        titleMedium = t.titleMedium.withAppFont(),
+        titleSmall = t.titleSmall.withAppFont(),
+        bodyLarge = t.bodyLarge.withAppFont(),
+        bodyMedium = t.bodyMedium.withAppFont(),
+        bodySmall = t.bodySmall.withAppFont(),
+        labelLarge = t.labelLarge.withAppFont(),
+        labelMedium = t.labelMedium.withAppFont(),
+        labelSmall = t.labelSmall.withAppFont(),
     )
 }
 
@@ -234,7 +242,7 @@ fun GestioneSpeseTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Com
     }
 }
 
-/** Accesso ai colori dell'app: `AppTheme.colors.peach`. */
+/** Accesso ai colori dell'app: `AppTheme.colors.ink`. */
 object AppTheme {
     val colors: AppColors
         @Composable @ReadOnlyComposable get() = LocalAppColors.current
