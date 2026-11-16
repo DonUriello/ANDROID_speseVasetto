@@ -86,7 +86,7 @@ fun SettingsScreen(
     LazyColumn(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(horizontal = 16.dp),
+        modifier = Modifier.padding(horizontal = 20.dp),
     ) {
         item { header() }
         item { PaydayPanel(st, vm) }

@@ -5,6 +5,7 @@ package it.elia.gestionespese.ui.summary
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +15,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,7 +36,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -46,243 +49,248 @@ import it.elia.gestionespese.core.MonthSummary
 import it.elia.gestionespese.ui.UiState
 import it.elia.gestionespese.ui.components.Amount
 import it.elia.gestionespese.ui.components.Panel
+import it.elia.gestionespese.ui.components.ProgressBar
 import it.elia.gestionespese.ui.components.RowDivider
+import it.elia.gestionespese.ui.components.ScreenTitle
 import it.elia.gestionespese.ui.components.SectionTitle
-import it.elia.gestionespese.ui.components.SelectField
-import it.elia.gestionespese.ui.components.SmallLabel
 import it.elia.gestionespese.ui.theme.AppTheme
+import it.elia.gestionespese.ui.theme.Rubik
 import it.elia.gestionespese.ui.theme.tabular
 import java.time.YearMonth
-import kotlin.math.floor
-import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 
 @Composable
-fun SummaryScreen(st: UiState, header: @Composable () -> Unit, contentPadding: PaddingValues) {
-    val months = st.math.monthsWithData()
+fun SummaryScreen(st: UiState, contentPadding: PaddingValues) {
+    val periods = st.math.monthsWithData()
     var selectedText by rememberSaveable { mutableStateOf<String?>(null) }
-    LazyColumn(
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(horizontal = 16.dp),
-    ) {
-        item { header() }
-        if (months.isEmpty()) {
+    val selected = selectedText?.let { YearMonth.parse(it) }?.takeIf { it in periods }
+        ?: st.math.currentPeriod.takeIf { it in periods }
+        ?: periods.lastOrNull()
+    val select = { p: YearMonth -> selectedText = p.toString() }
+
+    LazyColumn(contentPadding = contentPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (selected == null) {
+            item { Header(st, periods, null, select, summary = null) }
             item {
-                Panel {
+                Panel(Modifier.padding(horizontal = 20.dp)) {
                     SectionTitle("Ancora nessun dato")
-                    Text("Dopo il primo stipendio e le prime spese qui trovi il riepilogo mese per mese e il grafico entrate/uscite.")
+                    Text("Dopo il primo stipendio e le prime spese qui trovi il riepilogo periodo per periodo e il grafico entrate/uscite.")
                 }
             }
             return@LazyColumn
         }
-        val current = st.math.currentPeriod
-        val selected = selectedText?.let { YearMonth.parse(it) }?.takeIf { it in months }
-            ?: if (current in months) current else months.last()
+        val s = st.math.monthSummary(selected)
         val series = st.math.chartMonths().map { st.math.monthSummary(it) }
-        if (series.isNotEmpty()) item { ChartPanel(st, series) }
-        item { MonthPanel(st, months, selected) { selectedText = it.toString() } }
+        item { Header(st, periods, selected, select, s) }
+        item { SpentPanel(st, s) }
+        if (series.isNotEmpty()) item { ChartPanel(st, series, selected, select) }
+        item { DetailPanel(st, s) }
     }
 }
 
+/** Testata pesca con titolo, periodi e il riquadro dei totali che la sovrasta. */
 @Composable
-private fun ChartPanel(st: UiState, series: List<MonthSummary>) {
+private fun Header(st: UiState, periods: List<YearMonth>, selected: YearMonth?, onSelect: (YearMonth) -> Unit, summary: MonthSummary?) {
     val colors = AppTheme.colors
-    var picked by remember(series.size) { mutableStateOf<Int?>(null) }
-    var showTable by rememberSaveable { mutableStateOf(false) }
-    Panel {
-        SectionTitle("Entrate e uscite per periodo")
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            LegendItem("Entrate", colors.chartIn)
-            LegendItem("Spese", colors.chartOut)
-        }
-        BarChart(series, picked) { picked = it }
-        val p = picked?.let(series::getOrNull)
-        if (p != null) {
-            Text(
-                "${st.math.periodLabel(p.month)}: entrate ${Formats.eur(p.income)} · spese ${Formats.eur(p.expenses)}",
-                style = MaterialTheme.typography.bodySmall.tabular(),
-            )
-        } else {
-            Text("Tocca una barra per vedere i valori.", style = MaterialTheme.typography.bodySmall, color = colors.muted)
-        }
-        TextButton(onClick = { showTable = !showTable }) {
-            Text(if (showTable) "Nascondi la tabella" else "Mostra i valori in tabella", color = colors.muted)
-        }
-        if (showTable) {
-            Table(
-                header = listOf("Periodo", "Entrate", "Spese", "Differenza"),
-                rows = series.map { s ->
-                    listOf(Cell.Text(st.math.periodLabel(s.month)), Cell.Money(s.income), Cell.Money(s.expenses), Cell.Money(s.difference))
-                },
-            )
+    Box(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .padding(bottom = if (summary != null) 44.dp else 0.dp)
+                .background(colors.peachSoft, RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)),
+        )
+        Column(
+            Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = if (summary != null) 0.dp else 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ScreenTitle("Riepilogo")
+            if (selected != null) {
+                Text(st.math.periodLabel(selected), color = colors.muted)
+                val scroll = rememberScrollState(Int.MAX_VALUE)
+                Row(Modifier.horizontalScroll(scroll), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (p in periods) {
+                        val on = p == selected
+                        Surface(
+                            onClick = { onSelect(p) },
+                            shape = RoundedCornerShape(50),
+                            color = if (on) colors.peach else Color.White.copy(alpha = 0.6f),
+                            contentColor = Color(0xFF2E3E5C),
+                        ) {
+                            Text(
+                                Formats.monthShort(p),
+                                Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                        }
+                    }
+                }
+            }
+            if (summary != null) {
+                Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 4.dp) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Stat("Entrate", summary.income, colors.income, Modifier.weight(1f))
+                        Stat("Spese", summary.expenses, colors.ink, Modifier.weight(1f))
+                        Stat("Differenza", summary.difference, colors.ink, Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun LegendItem(text: String, color: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).background(color, RoundedCornerShape(2.dp)))
-        Text(text, Modifier.padding(start = 6.dp), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
+private fun Stat(label: String, cents: Long, color: Color, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.muted)
+        Amount(cents, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = color)
     }
 }
 
-/** Valore "tondo" per il massimo dell'asse (come `niceMax` del prototipo), in euro. */
+/** Quanto è stato speso di quello che c'era in ogni budget nel periodo. */
+@Composable
+private fun SpentPanel(st: UiState, s: MonthSummary) {
+    val colors = AppTheme.colors
+    val barColors = listOf(colors.peach, colors.navy, colors.chartIn, colors.amber)
+    Panel(Modifier.padding(horizontal = 20.dp)) {
+        SectionTitle("Speso per budget")
+        st.categories.forEachIndexed { i, c ->
+            val m = s.perCategory[c.id]
+            val spent = m?.spent ?: 0
+            // Disponibile nel periodo = quello che resta a fine periodo + quello che è stato speso
+            val available = max(spent, (m?.endBalance ?: 0) + spent)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row {
+                    Text(c.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "${Formats.eur(spent)} di ${Formats.eur(available)}",
+                        style = MaterialTheme.typography.bodySmall.tabular(),
+                        color = colors.muted,
+                    )
+                }
+                ProgressBar(if (available > 0) spent.toFloat() / available else 0f, barColors[i % barColors.size], colors.sunk)
+            }
+        }
+    }
+}
+
+/** Valore "tondo" per il massimo dell'asse, in euro. */
 private fun niceMax(v: Double): Double {
     if (v <= 0) return 100.0
-    val e = 10.0.pow(floor(log10(v)))
+    val e = Math.pow(10.0, Math.floor(Math.log10(v)))
     val f = v / e
     return (if (f <= 1) 1.0 else if (f <= 2) 2.0 else if (f <= 2.5) 2.5 else if (f <= 5) 5.0 else 10.0) * e
 }
 
-/** Euro interi con il punto delle migliaia, per l'asse del grafico. */
-private fun axisLabel(euros: Long): String =
-    euros.toString().reversed().chunked(3).joinToString(".").reversed() + " €"
-
 @Composable
-private fun BarChart(series: List<MonthSummary>, picked: Int?, onPick: (Int) -> Unit) {
+private fun ChartPanel(st: UiState, series: List<MonthSummary>, selected: YearMonth, onSelect: (YearMonth) -> Unit) {
     val colors = AppTheme.colors
     val measurer = rememberTextMeasurer()
-    val labelStyle = TextStyle(fontSize = 10.sp, color = colors.muted, fontFeatureSettings = "tnum")
+    val labelStyle = TextStyle(fontFamily = Rubik, fontSize = 11.sp, color = colors.muted)
+    val labelStrong = labelStyle.copy(color = colors.ink, fontWeight = FontWeight.SemiBold)
     val maxEuro = niceMax(series.maxOf { max(it.income, it.expenses) } / 100.0)
-    Canvas(
-        Modifier
-            .fillMaxWidth()
-            .height(240.dp)
-            .pointerInput(series) {
-                detectTapGestures { pos ->
-                    val padL = 56.dp.toPx()
-                    val gw = (size.width - padL - 4.dp.toPx()) / series.size
-                    val i = ((pos.x - padL) / gw).toInt()
-                    if (i in series.indices) onPick(i)
-                }
-            },
-    ) {
-        val padL = 56.dp.toPx()
-        val padR = 4.dp.toPx()
-        val padT = 8.dp.toPx()
-        val padB = 22.dp.toPx()
-        val iw = size.width - padL - padR
-        val ih = size.height - padT - padB
-        val n = series.size
-        val gw = iw / n
-        val bw = max(4.dp.toPx(), min(18.dp.toPx(), (gw - 10.dp.toPx()) / 2))
-        fun y(euro: Double) = padT + ih - (euro / maxEuro * ih).toFloat()
-
-        for (k in 0..4) {
-            val v = maxEuro * k / 4
-            val yy = y(v)
-            drawLine(
-                colors.line, Offset(padL, yy), Offset(size.width - padR, yy), strokeWidth = 1.dp.toPx(),
-                pathEffect = if (k > 0) PathEffect.dashPathEffect(floatArrayOf(4f, 6f)) else null,
-            )
-            val text = measurer.measure(axisLabel(v.toLong()), labelStyle)
-            drawText(text, topLeft = Offset(padL - 6.dp.toPx() - text.size.width, yy - text.size.height / 2f))
+    val sel = series.firstOrNull { it.month == selected }
+    Panel(Modifier.padding(horizontal = 20.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionTitle("Entrate e spese", Modifier.weight(1f))
+            Legend("Entrate", colors.chartIn)
+            Legend("Spese", colors.chartOut, Modifier.padding(start = 12.dp))
         }
-        val step = if (n > 8 && size.width < 520.dp.toPx()) 2 else 1
-        series.forEachIndexed { i, s ->
-            val cx = padL + gw * i + gw / 2
-            if (picked == i) drawRect(colors.sunk, Offset(padL + gw * i, padT), Size(gw, ih))
-            fun bar(x: Float, cents: Long, color: Color) {
-                val h = (cents / 100.0 / maxEuro * ih).toFloat()
-                if (h <= 0f) return
-                drawRoundRect(color, Offset(x, padT + ih - h), Size(bw, h), CornerRadius(min(4.dp.toPx(), bw / 2)))
-            }
-            bar(cx - bw - 1f, s.income, colors.chartIn)
-            bar(cx + 1f, s.expenses, colors.chartOut)
-            if ((n - 1 - i) % step == 0) {
-                val t = measurer.measure(Formats.monthShort(s.month), labelStyle)
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .pointerInput(series) {
+                    detectTapGestures { pos ->
+                        val i = (pos.x / (size.width.toFloat() / series.size)).toInt()
+                        series.getOrNull(i)?.let { onSelect(it.month) }
+                    }
+                },
+        ) {
+            val padB = 24.dp.toPx()
+            val ih = size.height - padB
+            val gw = size.width / series.size
+            val bw = min(14.dp.toPx(), (gw - 8.dp.toPx()) / 2)
+            drawLine(colors.line, Offset(0f, ih), Offset(size.width, ih), strokeWidth = 1.dp.toPx())
+            series.forEachIndexed { i, s ->
+                val cx = gw * i + gw / 2
+                val on = s.month == selected
+                fun bar(x: Float, cents: Long, color: Color) {
+                    val h = (cents / 100.0 / maxEuro * ih).toFloat()
+                    if (h <= 0f) return
+                    drawRoundRect(color, Offset(x, ih - h), Size(bw, h), CornerRadius(bw / 2, bw / 2))
+                }
+                bar(cx - bw - 2f, s.income, if (on) colors.chartInStrong else colors.chartIn)
+                bar(cx + 2f, s.expenses, colors.chartOut)
+                val t = measurer.measure(Formats.monthShort(s.month).substringBefore(' '), if (on) labelStrong else labelStyle)
                 drawText(t, topLeft = Offset(cx - t.size.width / 2f, size.height - t.size.height))
             }
         }
-    }
-}
-
-@Composable
-private fun MonthPanel(st: UiState, months: List<YearMonth>, selected: YearMonth, onSelect: (YearMonth) -> Unit) {
-    val s = st.math.monthSummary(selected)
-    Panel {
-        SectionTitle("Dettaglio del periodo")
-        SelectField("Periodo", months.reversed(), selected, { st.math.periodLabel(it) }, onSelect)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Stat("Entrate", s.income, Modifier.weight(1f))
-            Stat("Spese", s.expenses, Modifier.weight(1f))
-            Stat("Differenza", s.difference, Modifier.weight(1f))
+        if (sel != null) {
+            Text(
+                "${st.math.periodLabel(sel.month)}: entrate ${Formats.eur(sel.income)} · spese ${Formats.eur(sel.expenses)}",
+                style = MaterialTheme.typography.bodySmall.tabular(),
+                color = colors.muted,
+            )
         }
-        val rows = st.categories.map { c ->
-            val m = s.perCategory[c.id]
-            listOf(Cell.Text(c.name), Cell.Money(m?.entered ?: 0), Cell.Money(m?.spent ?: 0), Cell.Money(m?.endBalance ?: 0))
+    }
+}
+
+@Composable
+private fun Legend(text: String, color: Color, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(9.dp).background(color, CircleShape))
+        Text(text, Modifier.padding(start = 5.dp), style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.muted)
+    }
+}
+
+/** Tabella del periodo per budget, espandibile. */
+@Composable
+private fun DetailPanel(st: UiState, s: MonthSummary) {
+    val colors = AppTheme.colors
+    var open by rememberSaveable { mutableStateOf(false) }
+    Panel(Modifier.padding(horizontal = 20.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionTitle("Dettaglio per budget", Modifier.weight(1f))
+            TextButton(onClick = { open = !open }) { Text(if (open) "Nascondi" else "Mostra", color = colors.accent) }
         }
-        val tot = st.categories.mapNotNull { s.perCategory[it.id] }
-        Table(
-            header = listOf("Budget", "Entrato", "Speso", "Saldo a fine periodo"),
-            rows = rows,
-            footer = listOf(
-                Cell.Text("Totale"),
-                Cell.Money(tot.sumOf { it.entered }),
-                Cell.Money(tot.sumOf { it.spent }),
-                Cell.Money(tot.sumOf { it.endBalance }),
-            ),
-        )
-    }
-}
-
-@Composable
-private fun Stat(label: String, cents: Long, modifier: Modifier) {
-    Column(modifier) {
-        SmallLabel(label)
-        Amount(cents, style = MaterialTheme.typography.titleSmall)
-    }
-}
-
-private sealed interface Cell {
-    data class Text(val text: String) : Cell
-    data class Money(val cents: Long) : Cell
-}
-
-/** Tabella semplice: prima colonna testo, le altre importi allineati a destra. */
-@Composable
-private fun Table(header: List<String>, rows: List<List<Cell>>, footer: List<Cell>? = null) {
-    val weights = listOf(1.4f) + List(header.size - 1) { 1f }
-    Column {
-        Row(Modifier.padding(vertical = 6.dp)) {
-            header.forEachIndexed { i, h ->
-                Text(
-                    h.uppercase(),
-                    Modifier.weight(weights[i]),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AppTheme.colors.muted,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = if (i == 0) TextAlign.Start else TextAlign.End,
-                )
+        if (open) {
+            val weights = listOf(1.4f, 1f, 1f, 1.1f)
+            val header = listOf("Budget", "Entrato", "Speso", "Saldo fine")
+            Row {
+                header.forEachIndexed { i, h ->
+                    Text(
+                        h.uppercase(), Modifier.weight(weights[i]),
+                        style = MaterialTheme.typography.labelSmall, color = colors.muted, fontWeight = FontWeight.SemiBold,
+                        textAlign = if (i == 0) TextAlign.Start else TextAlign.End,
+                    )
+                }
             }
-        }
-        RowDivider()
-        for (r in rows) {
-            TableRow(r, weights, bold = false)
             RowDivider()
+            val rows = st.categories.map { c ->
+                val m = s.perCategory[c.id]
+                listOf(c.name, m?.entered ?: 0L, m?.spent ?: 0L, m?.endBalance ?: 0L)
+            }
+            for (r in rows) TableRow(r, weights, bold = false)
+            RowDivider()
+            val tot = st.categories.mapNotNull { s.perCategory[it.id] }
+            TableRow(listOf("Totale", tot.sumOf { it.entered }, tot.sumOf { it.spent }, tot.sumOf { it.endBalance }), weights, bold = true)
         }
-        if (footer != null) TableRow(footer, weights, bold = true)
     }
 }
 
 @Composable
-private fun TableRow(cells: List<Cell>, weights: List<Float>, bold: Boolean) {
-    Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun TableRow(cells: List<Any>, weights: List<Float>, bold: Boolean) {
+    Row(Modifier.padding(vertical = 4.dp)) {
         cells.forEachIndexed { i, c ->
             val style = MaterialTheme.typography.bodySmall.tabular().copy(fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal)
-            when (c) {
-                is Cell.Text -> Text(c.text, Modifier.weight(weights[i]), style = style)
-                is Cell.Money -> Text(
-                    Formats.eur(c.cents),
-                    Modifier.weight(weights[i]),
-                    style = style,
-                    textAlign = TextAlign.End,
-                    color = if (c.cents < 0) AppTheme.colors.neg else Color.Unspecified,
+            if (c is Long) {
+                Text(
+                    Formats.eur(c), Modifier.weight(weights[i]), style = style, textAlign = TextAlign.End,
+                    color = if (c < 0) AppTheme.colors.neg else Color.Unspecified,
                 )
+            } else {
+                Text(c.toString(), Modifier.weight(weights[i]), style = style)
             }
         }
     }

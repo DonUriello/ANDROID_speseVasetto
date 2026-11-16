@@ -3,6 +3,7 @@
 package it.elia.gestionespese.ui.sheets
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import it.elia.gestionespese.core.BudgetMath
@@ -58,6 +61,7 @@ import it.elia.gestionespese.ui.components.ErrorText
 import it.elia.gestionespese.ui.components.Notice
 import it.elia.gestionespese.ui.components.RowDivider
 import it.elia.gestionespese.ui.components.SectionTitle
+import it.elia.gestionespese.ui.components.SegmentedPills
 import it.elia.gestionespese.ui.components.SelectField
 import it.elia.gestionespese.ui.components.SheetButtons
 import it.elia.gestionespese.ui.components.SummaryRow
@@ -92,13 +96,16 @@ fun SheetHost(
     ModalBottomSheet(
         onDismissRequest = close,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = AppTheme.colors.ink,
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .imePadding()
-                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                .padding(start = 22.dp, end = 22.dp, bottom = 26.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             when (sheet) {
@@ -143,12 +150,11 @@ private fun IncomeForm(st: UiState, vm: MainViewModel, initialKind: MovementKind
         st.math.salarySplit(Money.parse(text) ?: 0, cats, st.balances).proposals.forEach { (id, v) -> alloc[id] = Money.input(v) }
     }
 
-    SectionTitle("Registra un'entrata")
-    SelectField(
-        label = "Tipo",
+    SheetTitle("Registra un'entrata")
+    SegmentedPills(
         options = listOf(MovementKind.STIPENDIO, MovementKind.STIPENDIO_EXTRA, MovementKind.ENTRATA),
         selected = kind,
-        optionText = ::incomeLabel,
+        optionText = { if (it == MovementKind.STIPENDIO_EXTRA) "Extra" else incomeLabel(it) },
         onSelect = {
             kind = it
             error = null
@@ -167,10 +173,10 @@ private fun IncomeForm(st: UiState, vm: MainViewModel, initialKind: MovementKind
             amount = it
             error = null
             if (salary) fill(it)
-        }, "Importo", Modifier.weight(1f))
+        }, "Importo", Modifier.weight(1f), background = AppTheme.colors.peachSoft)
         DateField("Data", date, { d -> if (d != null) date = d }, Modifier.weight(1f))
     }
-    if (salary) Notice("Periodo: ${st.math.periodLabel(st.math.periodOf(date.plusDays(BudgetMath.SALARY_EARLY_DAYS)))}")
+    if (salary) InfoChip("Periodo: ${st.math.periodLabel(st.math.periodOf(date.plusDays(BudgetMath.SALARY_EARLY_DAYS)))}")
     if (!salary) {
         TextInput(
             note, { note = it }, "Descrizione",
@@ -178,21 +184,13 @@ private fun IncomeForm(st: UiState, vm: MainViewModel, initialKind: MovementKind
         )
     }
     if (salary) {
-        BoxedRows {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             cats.forEachIndexed { i, c ->
-                if (i > 0) RowDivider()
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(c.name)
-                        Text(quotaSubtitle(st, c, quotas[c.id] ?: 0), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
-                    }
-                    AmountField(alloc[c.id].orEmpty(), {
-                        alloc[c.id] = it
-                        error = null
-                    }, null, Modifier.width(130.dp))
+                QuoteRow(c.name, quotaSubtitle(st, c, quotas[c.id] ?: 0), stripColor(i), alloc[c.id].orEmpty()) {
+                    alloc[c.id] = it
+                    error = null
                 }
             }
-            RowDivider()
             SummaryRow("Resta in \"Da assegnare\"", (Money.parse(amount) ?: 0) - Forms.sumOf(alloc.values), emphasized = true)
         }
     }
@@ -231,7 +229,7 @@ private fun ExpenseForm(st: UiState, vm: MainViewModel, prefill: ExpensePrefill?
     var note by remember { mutableStateOf(prefill?.note.orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle(prefill?.title ?: "Registra una spesa")
+    SheetTitle(prefill?.title ?: "Registra una spesa")
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         AmountField(amount, {
             amount = it
@@ -274,23 +272,15 @@ private fun AssignForm(st: UiState, vm: MainViewModel, close: () -> Unit) {
     val alloc = remember { mutableStateMapOf<String, String>().apply { cats.forEach { put(it.id, "0,00") } } }
     var error by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle("Assegna dal \"Da assegnare\"")
-    Row {
-        Notice("Disponibili: ")
-        Amount(available, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
-    }
-    BoxedRows {
+    SheetTitle("Assegna dal \"Da assegnare\"")
+    InfoChip("Disponibili: ${Formats.eur(available)}")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         cats.forEachIndexed { i, c ->
-            if (i > 0) RowDivider()
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(c.name, Modifier.weight(1f))
-                AmountField(alloc[c.id].orEmpty(), {
-                    alloc[c.id] = it
-                    error = null
-                }, null, Modifier.width(130.dp))
+            QuoteRow(c.name, "saldo ${Formats.eur(st.balance(c.id))}", stripColor(i), alloc[c.id].orEmpty()) {
+                alloc[c.id] = it
+                error = null
             }
         }
-        RowDivider()
         SummaryRow("Resta da assegnare", available - Forms.sumOf(alloc.values), emphasized = true)
     }
     ErrorText(error)
@@ -319,7 +309,7 @@ private fun TakeForm(st: UiState, vm: MainViewModel, c: Category, close: () -> U
     var note by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle("Togli da ${c.name}")
+    SheetTitle("Togli da ${c.name}")
     Row {
         Notice("Saldo attuale: ")
         Amount(bal, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
@@ -334,7 +324,9 @@ private fun TakeForm(st: UiState, vm: MainViewModel, c: Category, close: () -> U
         amount = it
         error = null
     }, "Quanto togliere")
-    OutlinedButton(onClick = { amount = Money.input(bal) }) { Text("Svuota: tutto il saldo (${Formats.eur(bal)})") }
+    OutlinedButton(onClick = { amount = Money.input(bal) }, shape = RoundedCornerShape(14.dp)) {
+        Text("Svuota: tutto il saldo (${Formats.eur(bal)})", color = AppTheme.colors.ink)
+    }
     SelectField(
         label = "Dove vanno",
         options = listOf<String?>(null) + others.map { it.id },
@@ -370,7 +362,7 @@ private fun ResetForm(st: UiState, vm: MainViewModel, close: () -> Unit) {
     var date by remember { mutableStateOf(st.today) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle("Reimposta totale iniziale")
+    SheetTitle("Reimposta totale iniziale")
     Notice(
         "Scrivi quanti soldi hai davvero sul conto. La differenza con il totale attuale entra o esce da " +
             "\"Da assegnare\"; i saldi dei budget non cambiano.",
@@ -409,46 +401,93 @@ private fun ResetForm(st: UiState, vm: MainViewModel, close: () -> Unit) {
 
 @Composable
 private fun QuickList(st: UiState, vm: MainViewModel, onOpen: (Sheet?) -> Unit, onGoToSettings: () -> Unit) {
+    val colors = AppTheme.colors
     val list = st.quickShortcuts
-    SectionTitle("Spese rapide")
-    Notice("Tocca per registrare la spesa con la data di oggi. Con ✎ cambi importo, data o budget prima di registrarla.")
-    if (list.isEmpty()) {
-        Text("Non hai ancora spese rapide. Le crei in Impostazioni, sotto \"Spese rapide\".")
-        OutlinedButton(onClick = onGoToSettings, modifier = Modifier.fillMaxWidth()) { Text("Vai alle Impostazioni") }
+    val tiles = listOf(
+        colors.amberSoft to colors.ink,
+        colors.peachSoft to colors.ink,
+        colors.tealSoft to colors.ink,
+        colors.navy to colors.onNavy,
+        colors.blueSoft to colors.ink,
+    )
+    SheetTitle("Spese rapide")
+    Notice("Un tocco registra la spesa con la data di oggi. Con la matita cambi importo, data o budget.")
+    // Tessere a due colonne, più quella per crearne una nuova
+    val cells: List<Shortcut?> = list + listOf(null)
+    for (row in cells.chunked(2)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (s in row) {
+                if (s == null) {
+                    NewTile(onGoToSettings, Modifier.weight(1f).fillMaxHeight())
+                } else {
+                    val (bg, fg) = tiles[list.indexOf(s) % tiles.size]
+                    QuickTile(st, s, bg, fg, Modifier.weight(1f).fillMaxHeight(), onTap = {
+                        vm.quickExpense(s)
+                        onOpen(null)
+                    }, onEdit = {
+                        onOpen(Sheet.Expense(ExpensePrefill("${s.name}, con modifiche", s.amount, s.categoryId, s.name)))
+                    })
+                }
+            }
+            if (row.size == 1) Box(Modifier.weight(1f))
+        }
     }
-    for (s in list) QuickRow(st, s, onTap = {
-        vm.quickExpense(s)
-        onOpen(null)
-    }, onEdit = {
-        onOpen(Sheet.Expense(ExpensePrefill("${s.name}, con modifiche", s.amount, s.categoryId, s.name)))
-    })
-    OutlinedButton(onClick = { onOpen(null) }, modifier = Modifier.fillMaxWidth()) { Text("Chiudi") }
 }
 
 @Composable
-private fun QuickRow(st: UiState, s: Shortcut, onTap: () -> Unit, onEdit: () -> Unit) {
+private fun QuickTile(
+    st: UiState,
+    s: Shortcut,
+    background: Color,
+    foreground: Color,
+    modifier: Modifier,
+    onTap: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Box(modifier) {
+        Surface(
+            onClick = onTap,
+            shape = RoundedCornerShape(22.dp),
+            color = background,
+            contentColor = foreground,
+            modifier = Modifier.fillMaxWidth().fillMaxHeight().heightIn(min = 118.dp),
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                Text(s.name, Modifier.padding(end = 36.dp), fontWeight = FontWeight.SemiBold)
+                Column(Modifier.padding(top = 12.dp)) {
+                    Text(Formats.eur(s.amount), style = MaterialTheme.typography.titleLarge.tabular(), fontWeight = FontWeight.Bold)
+                    Text(st.category(s.categoryId)?.name.orEmpty(), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        Surface(
+            onClick = onEdit,
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White.copy(alpha = 0.75f),
+            contentColor = Color(0xFF2E3E5C),
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(40.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(AppIcons.Edit, "Registra ${s.name} con modifiche", modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewTile(onClick: () -> Unit, modifier: Modifier) {
+    val colors = AppTheme.colors
     Surface(
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, AppTheme.colors.line),
-        color = MaterialTheme.colorScheme.background,
-        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = colors.muted,
+        border = BorderStroke(2.dp, colors.line),
+        modifier = modifier.heightIn(min = 118.dp),
     ) {
-        Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onTap, color = MaterialTheme.colorScheme.background, modifier = Modifier.weight(1f)) {
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(s.name, fontWeight = FontWeight.SemiBold)
-                        Text(st.category(s.categoryId)?.name.orEmpty(), style = MaterialTheme.typography.bodySmall, color = AppTheme.colors.muted)
-                    }
-                    Text(Formats.eur(s.amount), style = MaterialTheme.typography.titleMedium.tabular())
-                }
-            }
-            VerticalDivider(Modifier.fillMaxHeight(), color = AppTheme.colors.line)
-            Surface(onClick = onEdit, color = MaterialTheme.colorScheme.background) {
-                Box(Modifier.padding(horizontal = 18.dp, vertical = 22.dp)) {
-                    Icon(AppIcons.Edit, "Registra ${s.name} con modifiche", tint = AppTheme.colors.muted, modifier = Modifier.size(20.dp))
-                }
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Text("+", style = MaterialTheme.typography.headlineSmall)
+            Text("Nuova spesa rapida", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -463,7 +502,7 @@ private fun DeleteCategoryForm(st: UiState, vm: MainViewModel, c: Category, clos
     val others = st.categories.filter { it.id != c.id }
     var dest by remember { mutableStateOf<String?>(null) }
 
-    SectionTitle("Eliminare \"${c.name}\"?")
+    SheetTitle("Eliminare \"${c.name}\"?")
     BoxedRows {
         SummaryRow("Saldo attuale", bal)
         RowDivider()
@@ -499,5 +538,53 @@ private fun CountRow(label: String, n: Int) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
         Text(label, Modifier.weight(1f))
         Text(n.toString(), style = MaterialTheme.typography.bodyLarge.tabular())
+    }
+}
+
+// ---------- elementi comuni dei moduli ----------
+
+@Composable
+private fun SheetTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+}
+
+/** Etichetta teal tenue, es. il periodo dello stipendio. */
+@Composable
+private fun InfoChip(text: String) {
+    Text(
+        text,
+        modifier = Modifier.background(AppTheme.colors.accentSoft, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 6.dp),
+        style = MaterialTheme.typography.labelLarge,
+        color = AppTheme.colors.ink,
+    )
+}
+
+@Composable
+private fun stripColor(i: Int): Color {
+    val c = AppTheme.colors
+    return listOf(c.peach, c.chartIn, c.amber, c.navy)[i % 4]
+}
+
+/** Riga di una quota: segno colorato, nome, sottotitolo e campo importo compatto. */
+@Composable
+private fun QuoteRow(
+    name: String,
+    subtitle: String,
+    strip: Color,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    val colors = AppTheme.colors
+    Row(
+        Modifier.fillMaxWidth().background(colors.sunk, RoundedCornerShape(16.dp)).padding(start = 12.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.width(10.dp).height(36.dp).background(strip, RoundedCornerShape(5.dp)))
+        Column(Modifier.weight(1f)) {
+            Text(name, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.muted)
+        }
+        AmountField(value, onValueChange, null, Modifier.width(112.dp))
     }
 }

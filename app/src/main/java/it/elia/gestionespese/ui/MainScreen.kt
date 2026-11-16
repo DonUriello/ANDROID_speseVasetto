@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -44,6 +44,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -56,7 +57,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import it.elia.gestionespese.core.backup.BackupCodec
 import it.elia.gestionespese.ui.budget.BudgetActions
 import it.elia.gestionespese.ui.budget.BudgetScreen
-import it.elia.gestionespese.ui.components.AccountHeader
+import it.elia.gestionespese.ui.components.ScreenTitle
 import it.elia.gestionespese.ui.components.AppIcons
 import it.elia.gestionespese.ui.movements.MovementFilter
 import it.elia.gestionespese.ui.movements.MovementsScreen
@@ -132,17 +133,15 @@ fun MainScreen(vm: MainViewModel = viewModel(factory = MainViewModel.Factory)) {
         val content = PaddingValues(
             start = padding.calculateStartPadding(dir),
             end = padding.calculateEndPadding(dir),
-            top = padding.calculateTopPadding() + 12.dp,
+            top = padding.calculateTopPadding() + 16.dp,
             bottom = padding.calculateBottomPadding() + 96.dp,
         )
-        val header: @Composable () -> Unit = {
-            AccountHeader(
-                state,
-                onReset = { sheet = Sheet.Reset },
-                onSalary = { sheet = Sheet.Salary },
-                onAssign = { sheet = Sheet.Assign },
-            )
-        }
+        // Budget e Riepilogo hanno una testata colorata che arriva sotto la barra di stato
+        val edgeToEdge = PaddingValues(
+            start = padding.calculateStartPadding(dir),
+            end = padding.calculateEndPadding(dir),
+            bottom = padding.calculateBottomPadding() + 96.dp,
+        )
         when (tab) {
             Tab.BUDGET -> BudgetScreen(
                 state,
@@ -162,17 +161,16 @@ fun MainScreen(vm: MainViewModel = viewModel(factory = MainViewModel.Factory)) {
                     onSeed = vm::seed,
                     onImport = { importLauncher.launch(arrayOf("*/*")) },
                 ),
-                content,
+                edgeToEdge,
             )
             Tab.MOVIMENTI -> MovementsScreen(
                 state,
                 filter,
                 onFilter = { filter = it },
                 onDelete = { vm.deleteMovement(it.id) },
-                header = header,
                 contentPadding = content,
             )
-            Tab.RIEPILOGO -> SummaryScreen(state, header, content)
+            Tab.RIEPILOGO -> SummaryScreen(state, edgeToEdge)
             Tab.IMPOSTAZIONI -> SettingsScreen(
                 state,
                 vm,
@@ -183,7 +181,7 @@ fun MainScreen(vm: MainViewModel = viewModel(factory = MainViewModel.Factory)) {
                 ),
                 newCategoryOpen = newCategoryOpen,
                 onNewCategoryOpen = { newCategoryOpen = it },
-                header = header,
+                header = { ScreenTitle("Impostazioni") },
                 contentPadding = content,
             )
         }
@@ -219,41 +217,59 @@ fun MainScreen(vm: MainViewModel = viewModel(factory = MainViewModel.Factory)) {
 
 @Composable
 private fun BottomBar(tab: Tab, onTab: (Tab) -> Unit, quickEnabled: Boolean, onQuick: () -> Unit) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-        for (t in Tab.entries) {
-            NavigationBarItem(
-                selected = t == tab,
-                onClick = { onTab(t) },
-                icon = { Icon(t.icon, contentDescription = null) },
-                label = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
-            )
+    val colors = AppTheme.colors
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shadowElevation = 8.dp,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().height(76.dp).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for (t in Tab.entries) {
+                val on = t == tab
+                Surface(
+                    onClick = { onTab(t) },
+                    color = Color.Transparent,
+                    contentColor = if (on) colors.accent else colors.muted,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.weight(1f).height(60.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Icon(t.icon, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Text(
+                            t.label, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                }
+            }
+            QuickItem(quickEnabled, onQuick)
         }
-        QuickItem(quickEnabled, onQuick)
     }
 }
 
-/** "Spese rapide": non è una scheda, apre un bottom sheet; colore arancio per distinguerla. */
+/** "Spese rapide": non è una scheda, apre un bottom sheet; pillola pesca per distinguerla. */
 @Composable
 private fun RowScope.QuickItem(enabled: Boolean, onClick: () -> Unit) {
     val colors = AppTheme.colors
-    Box(Modifier.weight(1.1f).padding(vertical = 10.dp, horizontal = 2.dp), contentAlignment = Alignment.Center) {
-        Surface(
-            onClick = onClick,
-            enabled = enabled,
-            shape = RoundedCornerShape(12.dp),
-            color = if (enabled) colors.quick else colors.quick.copy(alpha = 0.45f),
-            contentColor = colors.onQuick,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(Modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(AppIcons.Bolt, contentDescription = null, modifier = Modifier.size(20.dp))
-                Text("Spese rapide", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2, lineHeight = 12.sp)
-            }
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(16.dp),
+        color = if (enabled) colors.peach else colors.peach.copy(alpha = 0.45f),
+        contentColor = colors.onPeach,
+        modifier = Modifier.weight(1.1f).height(56.dp).padding(horizontal = 2.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Icon(AppIcons.Bolt, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text("Rapide", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 1)
         }
     }
 }
 
-/** Pulsanti flottanti: + entrata extra (bordo verde) e − spesa (pieno). */
+/** Pulsanti flottanti: + entrata (bianco, bordo teal) e − spesa (pesca). */
 @Composable
 private fun Fabs(onIncome: () -> Unit, onExpense: () -> Unit) {
     val colors = AppTheme.colors
@@ -262,7 +278,7 @@ private fun Fabs(onIncome: () -> Unit, onExpense: () -> Unit) {
             onClick = onIncome,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface,
-            contentColor = colors.chartIn,
+            contentColor = colors.income,
             border = BorderStroke(2.dp, colors.chartIn),
             shadowElevation = 6.dp,
             modifier = Modifier.size(58.dp),
@@ -272,12 +288,11 @@ private fun Fabs(onIncome: () -> Unit, onExpense: () -> Unit) {
         FloatingActionButton(
             onClick = onExpense,
             shape = CircleShape,
-            containerColor = colors.accent,
-            contentColor = colors.onAccent,
+            containerColor = colors.peach,
+            contentColor = colors.onPeach,
             modifier = Modifier.size(58.dp),
         ) {
             Text("−", fontSize = 30.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
-
