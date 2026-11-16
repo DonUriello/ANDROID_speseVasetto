@@ -208,16 +208,20 @@ L'utente scrive il totale reale. `diff = nuovoTotale - totaleConto`. Se `diff �
 - **Spese rapide**: stessa logica (modulo compatto per la nuova, Salva verde, Elimina rosso).
 - **Backup**: "Esporta backup" e "Importa backup" (vedi sezione 6).
 
-### Palette (dal prototipo)
+### Stile e palette
+Stile "card pastello" (mock approvato da Elia): fondo caldo chiaro, card molto arrotondate (20–22 dp), font Rubik incluso nell'app, testata Budget teal con angoli inferiori arrotondati, obiettivi su card blu notte, Riepilogo con testata pesca.
+
 | Token | Chiaro | Scuro | Uso |
 |---|---|---|---|
-| accent | #0f6b5c | #4fbfa6 | azioni principali |
-| spend | #2d5ea3 | #8db4ec | badge Spese, pulsante ☰ |
-| goal | #8a5a00 | #e3b55a | badge Obiettivo, valori evidenziati |
-| neg | #b3261e | #f08a80 | in rosso, Elimina |
-| ok | #25804f | #4cb87e | Salva |
-| quick | #b4531a | #e08a4a | Spese rapide |
-| in / out (grafico) | #1F8A70 / #C46F1C | #2FA583 / #CF7F30 | entrate / spese |
+| ink | #2E3E5C | #E8ECF2 | testo |
+| header | #2F7F72 | #1F5F55 | testata Budget, selezioni (testo bianco) |
+| peach | #F2A07B | #F2A07B | pulsante −, Conferma, Spese rapide (testo ink) |
+| amber | #F2B552 | #F2B552 | + Stipendio, monete, barre obiettivi |
+| peachSoft / tealSoft / amberSoft / blueSoft | #F9D3BE / #BFE0DC / #F7D78E / #C9D6EC | tinte scure | fondi delle card |
+| navy | #3B5280 | #2C3D63 | card obiettivi |
+| income | #1F6B5E | #7FD3C2 | importi in entrata |
+| neg | #B3261E | #F08A80 | in rosso, Elimina |
+| chartIn / chartOut | #5BAA9B / #F2B552 | idem | grafico entrate / spese |
 
 Tema chiaro e scuro, entrambi curati.
 

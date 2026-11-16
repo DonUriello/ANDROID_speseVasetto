@@ -2,15 +2,20 @@ package it.elia.gestionespese.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,7 +27,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,31 +38,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import it.elia.gestionespese.core.Formats
-import it.elia.gestionespese.ui.UiState
 import it.elia.gestionespese.ui.theme.AppTheme
 import it.elia.gestionespese.ui.theme.tabular
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
-/** Riquadro con bordo sottile, come i pannelli del prototipo. */
+/** Card bianca arrotondata con ombra morbida: il contenitore di base dell'app. */
 @Composable
-fun Panel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun Panel(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.surface,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, AppTheme.colors.line),
+        shape = RoundedCornerShape(22.dp),
+        color = color,
+        shadowElevation = 2.dp,
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
+}
+
+/** Titolo grande di schermata ("Movimenti", "Riepilogo"…). */
+@Composable
+fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier = modifier, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 }
 
 @Composable
@@ -76,14 +92,14 @@ fun ErrorText(text: String?) {
     if (!text.isNullOrEmpty()) Text(text, style = MaterialTheme.typography.bodyMedium, color = AppTheme.colors.neg)
 }
 
-/** Etichetta maiuscola piccola, es. il nome del mese nei Movimenti. */
+/** Etichetta maiuscola piccola, es. il periodo nei Movimenti. */
 @Composable
-fun SmallLabel(text: String, modifier: Modifier = Modifier) {
+fun SmallLabel(text: String, modifier: Modifier = Modifier, color: Color = AppTheme.colors.muted) {
     Text(
         text.uppercase(),
         modifier = modifier,
         style = MaterialTheme.typography.labelSmall,
-        color = AppTheme.colors.muted,
+        color = color,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.8.sp,
     )
@@ -93,7 +109,7 @@ fun SmallLabel(text: String, modifier: Modifier = Modifier) {
 fun Badge(text: String, background: Color, foreground: Color) {
     Text(
         text.uppercase(),
-        modifier = Modifier.background(background, RoundedCornerShape(50)).padding(horizontal = 7.dp, vertical = 2.dp),
+        modifier = Modifier.background(background, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp),
         color = foreground,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
@@ -106,7 +122,7 @@ fun Badge(text: String, background: Color, foreground: Color) {
 fun Amount(
     cents: Long,
     modifier: Modifier = Modifier,
-    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
+    style: TextStyle = MaterialTheme.typography.bodyLarge,
     color: Color = Color.Unspecified,
     negativeRed: Boolean = true,
     prefix: String = "",
@@ -120,7 +136,113 @@ fun Amount(
     )
 }
 
-/** Campo importo in euro: tastiera numerica, testo libero validato al momento del salvataggio. */
+/** Barra di avanzamento arrotondata (0–1). */
+@Composable
+fun ProgressBar(fraction: Float, color: Color, track: Color, modifier: Modifier = Modifier, height: Int = 8) {
+    Box(modifier.fillMaxWidth().height(height.dp).clip(RoundedCornerShape(50)).background(track)) {
+        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).clip(RoundedCornerShape(50)).background(color))
+    }
+}
+
+/** Pillola selezionabile (filtri, periodi). */
+@Composable
+fun PillChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = AppTheme.colors
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = if (selected) colors.blueSoft else MaterialTheme.colorScheme.surface,
+        contentColor = if (selected) colors.ink else colors.muted,
+        modifier = modifier.heightIn(min = 40.dp),
+    ) {
+        Box(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal, maxLines = 1)
+        }
+    }
+}
+
+/** Scelta tra poche opzioni in una barra a pillole (es. Stipendio / Extra / Altro). */
+@Composable
+fun <T> SegmentedPills(options: List<T>, selected: T, optionText: (T) -> String, onSelect: (T) -> Unit) {
+    val colors = AppTheme.colors
+    Row(
+        Modifier.fillMaxWidth().background(colors.sunk, RoundedCornerShape(16.dp)).padding(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        for (o in options) {
+            val on = o == selected
+            Surface(
+                onClick = { onSelect(o) },
+                shape = RoundedCornerShape(12.dp),
+                color = if (on) colors.header else Color.Transparent,
+                contentColor = if (on) colors.onHeader else colors.muted,
+                modifier = Modifier.weight(1f).height(42.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(optionText(o), fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+/** Contenitore pieno arrotondato con etichetta piccola sopra il valore: lo stile dei campi dell'app. */
+@Composable
+private fun FieldBox(
+    label: String,
+    modifier: Modifier,
+    background: Color,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(background)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .heightIn(min = 60.dp)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = AppTheme.colors.muted)
+        content()
+    }
+}
+
+@Composable
+private fun PlainTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String?,
+    style: TextStyle,
+    keyboardType: KeyboardType,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AppTheme.colors
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = style.copy(color = colors.ink),
+        cursorBrush = SolidColor(colors.ink),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        modifier = modifier.fillMaxWidth(),
+        decorationBox = { inner ->
+            Box(contentAlignment = if (style.textAlign == TextAlign.End) Alignment.CenterEnd else Alignment.CenterStart) {
+                if (value.isEmpty() && placeholder != null) {
+                    Text(placeholder, style = style.copy(color = colors.muted.copy(alpha = 0.7f)))
+                }
+                inner()
+            }
+        },
+    )
+}
+
+/**
+ * Campo importo in euro: tastiera numerica, testo libero validato al salvataggio.
+ * Con [label] è un riquadro pieno; senza è il campo compatto delle righe delle quote.
+ */
 @Composable
 fun AmountField(
     value: String,
@@ -128,17 +250,33 @@ fun AmountField(
     label: String?,
     modifier: Modifier = Modifier,
     placeholder: String = "0,00",
+    background: Color = AppTheme.colors.sunk,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = label?.let { { Text(it) } },
-        placeholder = { Text(placeholder) },
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyLarge.tabular().copy(textAlign = TextAlign.End),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        modifier = modifier.fillMaxWidth(),
-    )
+    if (label != null) {
+        FieldBox(label, modifier, background) {
+            PlainTextField(
+                value, onValueChange, placeholder,
+                MaterialTheme.typography.titleLarge.tabular().copy(fontWeight = FontWeight.Bold),
+                KeyboardType.Decimal,
+            )
+        }
+    } else {
+        Box(
+            modifier
+                .height(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.5.dp, AppTheme.colors.line, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            PlainTextField(
+                value, onValueChange, placeholder,
+                MaterialTheme.typography.bodyLarge.tabular().copy(fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End),
+                KeyboardType.Decimal,
+            )
+        }
+    }
 }
 
 @Composable
@@ -149,30 +287,19 @@ fun TextInput(
     modifier: Modifier = Modifier,
     placeholder: String? = null,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it) } },
-        singleLine = true,
-        modifier = modifier.fillMaxWidth(),
-    )
+    FieldBox(label, modifier, AppTheme.colors.sunk) {
+        PlainTextField(value, onValueChange, placeholder, MaterialTheme.typography.bodyLarge, KeyboardType.Text)
+    }
 }
 
-/** Campo di sola lettura che si comporta come un pulsante. */
+/** Riquadro che si comporta come un pulsante (selezione, data). */
 @Composable
 private fun ClickableField(text: String, label: String, onClick: () -> Unit, modifier: Modifier, trailing: String) {
-    Box(modifier) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            trailingIcon = { Text(trailing, color = AppTheme.colors.muted) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Box(Modifier.matchParentSize().clickable(onClick = onClick))
+    FieldBox(label, modifier, AppTheme.colors.sunk, onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text(trailing, color = AppTheme.colors.muted)
+        }
     }
 }
 
@@ -211,7 +338,7 @@ fun DateField(
     clearable: Boolean = false,
 ) {
     var open by remember { mutableStateOf(false) }
-    ClickableField(date?.let(Formats::date) ?: "—", label, { open = true }, modifier.fillMaxWidth(), "📅")
+    ClickableField(date?.let(Formats::date) ?: "—", label, { open = true }, modifier.fillMaxWidth(), "")
     if (open) {
         val state = rememberDatePickerState(
             initialSelectedDateMillis = (date ?: LocalDate.now()).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
@@ -241,38 +368,46 @@ fun DateField(
     }
 }
 
-/** Riga etichetta / valore in un riquadro di riepilogo (es. "Resta in Da assegnare"). */
+/** Riga etichetta / importo; [emphasized] è il riquadro blu notte (es. "Resta in Da assegnare"). */
 @Composable
 fun SummaryRow(label: String, cents: Long, emphasized: Boolean = false, sign: Boolean = false) {
+    val colors = AppTheme.colors
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (emphasized) AppTheme.colors.sunk else Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (emphasized) colors.navy else Color.Transparent)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, Modifier.weight(1f), fontWeight = if (emphasized) FontWeight.SemiBold else FontWeight.Normal)
-        Amount(cents, prefix = if (sign && cents > 0) "+" else "", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            label, Modifier.weight(1f),
+            color = if (emphasized) colors.onNavy else colors.ink,
+            fontWeight = if (emphasized) FontWeight.Medium else FontWeight.Normal,
+        )
+        Amount(
+            cents,
+            prefix = if (sign && cents > 0) "+" else "",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = if (emphasized) colors.onNavy else Color.Unspecified,
+            negativeRed = !emphasized,
+        )
     }
 }
 
-/** Contenitore a righe con bordo (le tabelline dei moduli). */
+/** Contenitore a righe (le tabelline dei moduli). */
 @Composable
 fun BoxedRows(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, AppTheme.colors.line),
-        color = Color.Transparent,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(content = content)
-    }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(AppTheme.colors.sunk),
+        content = content,
+    )
 }
 
 @Composable
 fun RowDivider() = HorizontalDivider(color = AppTheme.colors.line)
 
-/** Pulsanti in fondo ai moduli: Annulla + azione principale. */
+/** Pulsanti in fondo ai moduli: Annulla + azione principale (pesca, o rossa se [danger]). */
 @Composable
 fun SheetButtons(
     confirm: String,
@@ -281,59 +416,23 @@ fun SheetButtons(
     cancel: String = "Annulla",
     danger: Boolean = false,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text(cancel) }
+    val colors = AppTheme.colors
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedButton(
+            onClick = onCancel,
+            modifier = Modifier.weight(1f).height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.5.dp, colors.line),
+        ) { Text(cancel, color = colors.ink) }
         Button(
             onClick = onConfirm,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1.4f).height(52.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = if (danger) {
-                ButtonDefaults.buttonColors(containerColor = AppTheme.colors.neg, contentColor = Color.White)
+                ButtonDefaults.buttonColors(containerColor = colors.neg, contentColor = Color.White)
             } else {
-                ButtonDefaults.buttonColors()
+                ButtonDefaults.buttonColors(containerColor = colors.peach, contentColor = colors.onPeach)
             },
-        ) { Text(confirm) }
-    }
-}
-
-/** Testata: totali del conto e azioni principali (SPEC.md §5, Struttura generale). */
-@Composable
-fun AccountHeader(
-    st: UiState,
-    onReset: () -> Unit,
-    onSalary: () -> Unit,
-    onAssign: () -> Unit,
-) {
-    val b = st.balances
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SmallLabel("Gestione spese")
-        Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.Bottom) {
-            Text("Totale conto", Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-            Amount(b.totalAccount, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold))
-        }
-        RowDivider()
-        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Totale nei budget", Modifier.weight(1f), color = AppTheme.colors.muted)
-            Amount(b.totalInBudgets, style = MaterialTheme.typography.titleMedium)
-        }
-        RowDivider()
-        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Da assegnare", Modifier.weight(1f), color = AppTheme.colors.muted)
-            Amount(
-                b.toAssign,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (b.toAssign > 0) AppTheme.colors.ok else Color.Unspecified,
-            )
-        }
-        RowDivider()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onReset) { Text("Reimposta totale iniziale", color = AppTheme.colors.muted) }
-        }
-        val hasCats = st.categories.isNotEmpty()
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onSalary, enabled = hasCats, modifier = Modifier.weight(1f)) { Text("+ Stipendio") }
-            OutlinedButton(onClick = onAssign, enabled = hasCats && b.toAssign > 0, modifier = Modifier.weight(1f)) {
-                Text("Assegna dal Da assegnare", textAlign = TextAlign.Center)
-            }
-        }
+        ) { Text(confirm, fontWeight = FontWeight.SemiBold) }
     }
 }
